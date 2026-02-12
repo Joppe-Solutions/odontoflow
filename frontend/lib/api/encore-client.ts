@@ -16,7 +16,7 @@ export const Local: BaseURL = "http://localhost:4000";
  * Environment returns a BaseURL for calling the cloud environment with the given name.
  */
 export function Environment(name: string): BaseURL {
-  return `https://${name}-{{ENCORE_APP_ID}}.encr.app`;
+  return `https://${name}-odontoflow-fiei.encr.app`;
 }
 
 /**
@@ -27,7 +27,7 @@ export function PreviewEnv(pr: number | string): BaseURL {
 }
 
 /**
- * Client is an API client for the {{ENCORE_APP_ID}} Encore application.
+ * Client is an API client for the odontoflow-fiei Encore application.
  */
 export default class Client {
   public readonly admin: admin.ServiceClient;
@@ -424,7 +424,7 @@ class BaseClient {
     // because browsers do not allow setting User-Agent headers to requests
     if (typeof window === "undefined") {
       this.headers["User-Agent"] =
-        "{{ENCORE_APP_ID}}-Generated-TS-Client (Encore/v1.46.5)";
+        "odontoflow-fiei-Generated-TS-Client (Encore/v1.46.5)";
     }
 
     this.requestInit = options.requestInit ?? {};

@@ -1,3 +1,3 @@
 // The base url for where the frontend is hosted.
-// Update to point to where you are hosting your frontend.
-export const FRONTEND_URL = "https://encorets-saas-starter.vercel.app";
+// Update to your Vercel URL once it's ready.
+export const FRONTEND_URL = "http://localhost:3000";

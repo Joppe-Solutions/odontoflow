@@ -8,7 +8,7 @@ if (serverSideEnv.VERCEL_ENV === "production") {
 	environment = Environment("staging");
 } else if (serverSideEnv.VERCEL_ENV === "preview") {
 	if (!serverSideEnv.VERCEL_GIT_PULL_REQUEST_ID) {
-		throw new Error(" is not set");
+		throw new Error("VERCEL_GIT_PULL_REQUEST_ID is not set");
 	}
 	environment = PreviewEnv(serverSideEnv.VERCEL_GIT_PULL_REQUEST_ID);
 }
