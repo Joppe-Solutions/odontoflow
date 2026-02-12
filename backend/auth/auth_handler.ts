@@ -43,23 +43,32 @@ export const auth = authHandler<AuthParams, AuthData>(async (params) => {
 		let orgID = verifiedToken.org_id ?? "";
 		const requestedOrgID = params.xOrganizationId?.trim();
 
-		// Server-side requests can provide the active org context explicitly.
-		// If it's missing in the token, verify membership before trusting it.
-		if (!orgID && requestedOrgID) {
+		// Some Clerk sessions arrive without active org in the token.
+		// In this case, resolve org context from membership safely.
+		if (!orgID) {
 			const memberships = await clerk.users.getOrganizationMembershipList({
 				userId: verifiedToken.sub,
 				limit: 100,
 			});
 
-			const isMember = memberships.data.some(
-				(membership) => membership.organization.id === requestedOrgID,
-			);
+			// Server-side requests can provide the active org context explicitly.
+			// If provided, verify membership before trusting it.
+			if (requestedOrgID) {
+				const isMember = memberships.data.some(
+					(membership) => membership.organization.id === requestedOrgID,
+				);
 
-			if (!isMember) {
-				throw APIError.unauthenticated("invalid organization context");
+				if (!isMember) {
+					throw APIError.unauthenticated("invalid organization context");
+				}
+
+				orgID = requestedOrgID;
 			}
 
-			orgID = requestedOrgID;
+			// Final fallback: use the user's first membership to avoid auth deadlocks.
+			if (!orgID) {
+				orgID = memberships.data[0]?.organization.id ?? "";
+			}
 		}
 
 		return {
