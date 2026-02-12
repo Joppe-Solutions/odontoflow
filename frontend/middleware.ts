@@ -2,6 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 const isPublicRoute = createRouteMatcher(["/", "/pricing", "/sign-in(.*)"]);
+const isOrgRequiredRoute = createRouteMatcher(["/dashboard/subscription(.*)"]);
 
 export default clerkMiddleware(async (auth, request) => {
 	const isPublic = isPublicRoute(request);
@@ -9,8 +10,13 @@ export default clerkMiddleware(async (auth, request) => {
 		await auth.protect();
 	}
 
-	// If we don't have an organization ID, redirect to the create organization page
-	if (!isPublic && request.nextUrl.pathname !== "/select-organization") {
+	// Only force org selection on routes that strictly require an organization.
+	// This avoids locking users in a redirect loop when Clerk org activation fails.
+	if (
+		!isPublic &&
+		isOrgRequiredRoute(request) &&
+		request.nextUrl.pathname !== "/select-organization"
+	) {
 		const user = await auth();
 
 		if (!user.orgId) {
