@@ -12,22 +12,22 @@ export default function DashboardLayout({
 }: Readonly<{ children: React.ReactNode }>) {
 	return (
 		<SidebarProvider>
-			<AppSidebar collapsible="offcanvas" />
+			<AppSidebar collapsible="icon" />
 
-			<div className="w-full flex flex-col">
+			<SidebarInset>
 				<header className="flex items-center px-2 py-2 gap-2">
 					<SidebarTrigger />
 					<Separator orientation="vertical" />
 
 					<div className="grow flex items-center justify-between">
-						<p className="text-lg font-semibold">Acme</p>
+						<p className="text-lg font-semibold">OdontoFlow</p>
 
 						<UserButton />
 					</div>
 				</header>
 
 				<div className="px-2 py-2">{children}</div>
-			</div>
+			</SidebarInset>
 		</SidebarProvider>
 	);
 }

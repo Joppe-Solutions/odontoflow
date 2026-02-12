@@ -95,25 +95,25 @@ export default async function PatientsPage({ searchParams }: PageProps) {
 	return (
 		<div className="container mx-auto max-w-6xl space-y-6">
 			<div>
-				<h1 className="text-3xl font-semibold">Pacientes</h1>
+				<h1 className="text-3xl font-semibold">Patients</h1>
 				<p className="text-muted-foreground mt-1 text-sm">
-					Gestao de prontuario e dados clinicos por organizacao.
+					Patient records and clinical data management.
 				</p>
 			</div>
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Cadastrar novo paciente</CardTitle>
+					<CardTitle>Register New Patient</CardTitle>
 					<CardDescription>
-						Este cadastro ja fica disponivel para os fluxos de anamnese e exames.
+						This registration will be available for anamnesis and exam workflows.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<form action={createPatientAction} className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-						<Input name="name" placeholder="Nome completo" required />
+						<Input name="name" placeholder="Full name" required />
 						<Input name="cpf" placeholder="CPF" required />
-						<Input name="email" placeholder="E-mail (opcional)" type="email" />
-						<Input name="phone" placeholder="Telefone" required />
+						<Input name="email" placeholder="Email (optional)" type="email" />
+						<Input name="phone" placeholder="Phone" required />
 						<Input name="birthDate" type="date" required />
 						<select
 							name="gender"
@@ -121,13 +121,13 @@ export default async function PatientsPage({ searchParams }: PageProps) {
 							className="border-input bg-background h-9 rounded-md border px-3 text-sm"
 							required
 						>
-							<option value="female">Feminino</option>
-							<option value="male">Masculino</option>
-							<option value="other">Outro</option>
+							<option value="female">Female</option>
+							<option value="male">Male</option>
+							<option value="other">Other</option>
 						</select>
 
 						<div className="md:col-span-2 lg:col-span-3">
-							<Button type="submit">Criar paciente</Button>
+							<Button type="submit">Create Patient</Button>
 						</div>
 					</form>
 				</CardContent>
@@ -135,7 +135,7 @@ export default async function PatientsPage({ searchParams }: PageProps) {
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Lista de pacientes</CardTitle>
+					<CardTitle>Patient List</CardTitle>
 					<CardDescription>Total: {patients.total}</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
@@ -143,7 +143,7 @@ export default async function PatientsPage({ searchParams }: PageProps) {
 						<Input
 							name="search"
 							defaultValue={search}
-							placeholder="Buscar por nome ou CPF"
+							placeholder="Search by name or CPF"
 							className="md:max-w-sm"
 						/>
 						<select
@@ -151,17 +151,17 @@ export default async function PatientsPage({ searchParams }: PageProps) {
 							defaultValue={statusFilter ?? "all"}
 							className="border-input bg-background h-9 rounded-md border px-3 text-sm md:w-48"
 						>
-							<option value="all">Todos os status</option>
-							<option value="active">Ativo</option>
-							<option value="inactive">Inativo</option>
-							<option value="archived">Arquivado</option>
+							<option value="all">All statuses</option>
+							<option value="active">Active</option>
+							<option value="inactive">Inactive</option>
+							<option value="archived">Archived</option>
 						</select>
 						<Button type="submit" variant="outline">
-							Filtrar
+							Filter
 						</Button>
 						{(search || statusFilter) && (
 							<Button asChild variant="ghost">
-								<Link href="/dashboard/patients">Limpar</Link>
+								<Link href="/dashboard/patients">Clear</Link>
 							</Button>
 						)}
 					</form>
@@ -169,18 +169,18 @@ export default async function PatientsPage({ searchParams }: PageProps) {
 					<Table>
 						<TableHeader>
 							<TableRow>
-								<TableHead>Paciente</TableHead>
+								<TableHead>Patient</TableHead>
 								<TableHead>CPF</TableHead>
 								<TableHead>Status</TableHead>
-								<TableHead>Criado em</TableHead>
-								<TableHead className="text-right">Acoes</TableHead>
+								<TableHead>Created at</TableHead>
+								<TableHead className="text-right">Actions</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
 							{patients.items.length === 0 ? (
 								<TableRow>
 									<TableCell colSpan={5} className="text-muted-foreground">
-										Nenhum paciente encontrado.
+										No patients found.
 									</TableCell>
 								</TableRow>
 							) : (
@@ -197,12 +197,12 @@ export default async function PatientsPage({ searchParams }: PageProps) {
 										<TableCell>{patient.cpf}</TableCell>
 										<TableCell>{patient.status}</TableCell>
 										<TableCell>
-											{new Date(patient.createdAt).toLocaleDateString("pt-BR")}
+											{new Date(patient.createdAt).toLocaleDateString("en-US")}
 										</TableCell>
 										<TableCell className="text-right">
 											<Button asChild size="sm" variant="outline">
 												<Link href={`/dashboard/patients/${patient.id}`}>
-													Ver prontuario
+													View Record
 												</Link>
 											</Button>
 										</TableCell>

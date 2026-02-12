@@ -77,6 +77,73 @@ interface ArchivePatientParams {
 	id: string;
 }
 
+type TimelineEventType =
+	| "created"
+	| "updated"
+	| "anamnesis_submitted"
+	| "exam_uploaded"
+	| "exam_reviewed"
+	| "diagnosis_created"
+	| "prescription_created"
+	| "note_added"
+	| "status_changed"
+	| "archived";
+
+interface TimelineEventRow {
+	id: string;
+	patient_id: string;
+	organization_id: string;
+	event_type: TimelineEventType;
+	title: string;
+	description: string | null;
+	metadata: Record<string, unknown> | null;
+	actor_id: string | null;
+	created_at: Date;
+}
+
+interface TimelineEvent {
+	id: string;
+	patientId: string;
+	eventType: TimelineEventType;
+	title: string;
+	description?: string;
+	metadata?: Record<string, unknown>;
+	actorId?: string;
+	createdAt: Date;
+}
+
+interface GetTimelineParams {
+	patientId: string;
+	limit?: number;
+	offset?: number;
+}
+
+interface GetTimelineResponse {
+	items: TimelineEvent[];
+	total: number;
+}
+
+interface AddTimelineEventParams {
+	patientId: string;
+	eventType: TimelineEventType;
+	title: string;
+	description?: string;
+	metadata?: Record<string, unknown>;
+}
+
+function toTimelineEvent(row: TimelineEventRow): TimelineEvent {
+	return {
+		id: row.id,
+		patientId: row.patient_id,
+		eventType: row.event_type,
+		title: row.title,
+		description: row.description ?? undefined,
+		metadata: row.metadata ?? undefined,
+		actorId: row.actor_id ?? undefined,
+		createdAt: row.created_at,
+	};
+}
+
 function toPatient(row: PatientRow): Patient {
 	return {
 		id: row.id,
@@ -305,5 +372,108 @@ export const archivePatient = api(
 		});
 
 		return toPatient(row);
+	},
+);
+
+// Returns the timeline events for a patient.
+export const getTimeline = api(
+	{ method: "GET", path: "/patients/:patientId/timeline", expose: true, auth: true },
+	async (params: GetTimelineParams): Promise<GetTimelineResponse> => {
+		const authData = requireAuthContext();
+		const limit = normalizeLimit(params.limit);
+		const offset = normalizeOffset(params.offset);
+
+		// First verify patient belongs to organization
+		const patient = await db.queryRow<PatientRow>`
+			SELECT * FROM patients
+			WHERE id = ${params.patientId}
+			  AND organization_id = ${authData.orgID}
+		`;
+
+		if (!patient) {
+			throw APIError.notFound("patient not found");
+		}
+
+		const items: TimelineEvent[] = [];
+		for await (const row of db.query<TimelineEventRow>`
+			SELECT *
+			FROM patient_timeline
+			WHERE patient_id = ${params.patientId}
+			  AND organization_id = ${authData.orgID}
+			ORDER BY created_at DESC
+			LIMIT ${limit}
+			OFFSET ${offset}
+		`) {
+			items.push(toTimelineEvent(row));
+		}
+
+		const totalRow = await db.queryRow<{ count: number }>`
+			SELECT COUNT(*)::INT AS count
+			FROM patient_timeline
+			WHERE patient_id = ${params.patientId}
+			  AND organization_id = ${authData.orgID}
+		`;
+
+		return {
+			items,
+			total: totalRow?.count ?? 0,
+		};
+	},
+);
+
+// Adds a timeline event for a patient.
+export const addTimelineEvent = api(
+	{ method: "POST", path: "/patients/:patientId/timeline", expose: true, auth: true },
+	async (params: AddTimelineEventParams): Promise<TimelineEvent> => {
+		const authData = requireAuthContext();
+		const id = randomUUID();
+
+		// First verify patient belongs to organization
+		const patient = await db.queryRow<PatientRow>`
+			SELECT * FROM patients
+			WHERE id = ${params.patientId}
+			  AND organization_id = ${authData.orgID}
+		`;
+
+		if (!patient) {
+			throw APIError.notFound("patient not found");
+		}
+
+		const row = await db.queryRow<TimelineEventRow>`
+			INSERT INTO patient_timeline (
+				id,
+				patient_id,
+				organization_id,
+				event_type,
+				title,
+				description,
+				metadata,
+				actor_id
+			) VALUES (
+				${id},
+				${params.patientId},
+				${authData.orgID},
+				${params.eventType},
+				${params.title},
+				${params.description || null},
+				${params.metadata ? JSON.stringify(params.metadata) : null}::JSONB,
+				${authData.userID}
+			)
+			RETURNING *
+		`;
+
+		if (!row) {
+			throw APIError.internal("failed to create timeline event");
+		}
+
+		log.info("timeline event created", {
+			eventID: row.id,
+			patientID: params.patientId,
+			eventType: params.eventType,
+			orgID: authData.orgID,
+			userID: authData.userID,
+		});
+
+		return toTimelineEvent(row);
 	},
 );

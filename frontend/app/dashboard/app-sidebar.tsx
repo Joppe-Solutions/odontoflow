@@ -8,7 +8,7 @@ import {
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { OrganizationSwitcher } from "@clerk/nextjs";
-import { Cog, LayoutDashboard, Users, Wallet } from "lucide-react";
+import { ClipboardList, Cog, LayoutDashboard, Users, Wallet } from "lucide-react";
 import Link from "next/link";
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
@@ -36,7 +36,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 						<SidebarMenuItem>
 							<SidebarMenuButton asChild>
 								<Link href="/dashboard/patients">
-									<Users /> Pacientes
+									<Users /> Patients
+								</Link>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+						<SidebarMenuItem>
+							<SidebarMenuButton asChild>
+								<Link href="/dashboard/anamnesis">
+									<ClipboardList /> Anamnesis
 								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>

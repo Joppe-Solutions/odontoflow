@@ -52,6 +52,48 @@ export interface UpdatePatientParams {
 	status?: PatientStatus;
 }
 
+export type TimelineEventType =
+	| "created"
+	| "updated"
+	| "anamnesis_submitted"
+	| "exam_uploaded"
+	| "exam_reviewed"
+	| "diagnosis_created"
+	| "prescription_created"
+	| "note_added"
+	| "status_changed"
+	| "archived";
+
+export interface TimelineEvent {
+	id: string;
+	patientId: string;
+	eventType: TimelineEventType;
+	title: string;
+	description?: string;
+	metadata?: Record<string, unknown>;
+	actorId?: string;
+	createdAt: string;
+}
+
+export interface GetTimelineParams {
+	patientId: string;
+	limit?: number;
+	offset?: number;
+}
+
+export interface GetTimelineResponse {
+	items: TimelineEvent[];
+	total: number;
+}
+
+export interface AddTimelineEventParams {
+	patientId: string;
+	eventType: TimelineEventType;
+	title: string;
+	description?: string;
+	metadata?: Record<string, unknown>;
+}
+
 function getEncoreBaseUrl(): string {
 	if (serverSideEnv.VERCEL_ENV === "production") {
 		return Environment("staging");
@@ -137,5 +179,33 @@ export async function archivePatient(id: string): Promise<Patient> {
 	return request<Patient>(`/patients/${id}/archive`, {
 		method: "POST",
 		body: JSON.stringify({ id }),
+	});
+}
+
+export async function getTimeline(
+	params: GetTimelineParams,
+): Promise<GetTimelineResponse> {
+	const q = new URLSearchParams();
+
+	if (params.limit !== undefined) {
+		q.set("limit", String(params.limit));
+	}
+	if (params.offset !== undefined) {
+		q.set("offset", String(params.offset));
+	}
+
+	const suffix = q.toString() ? `?${q.toString()}` : "";
+	return request<GetTimelineResponse>(
+		`/patients/${params.patientId}/timeline${suffix}`,
+		{ method: "GET" },
+	);
+}
+
+export async function addTimelineEvent(
+	params: AddTimelineEventParams,
+): Promise<TimelineEvent> {
+	return request<TimelineEvent>(`/patients/${params.patientId}/timeline`, {
+		method: "POST",
+		body: JSON.stringify(params),
 	});
 }

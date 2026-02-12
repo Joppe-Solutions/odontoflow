@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { archivePatient, getPatient, type PatientGender, type PatientStatus, updatePatient } from "@/lib/api/patients-server";
+import { PatientTimeline } from "@/components/timeline/patient-timeline";
+import { archivePatient, getPatient, getTimeline, type PatientGender, type PatientStatus, updatePatient } from "@/lib/api/patients-server";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
@@ -81,8 +82,12 @@ export default async function PatientDetailsPage({ params }: PageProps) {
 	const { id } = await params;
 
 	let patient;
+	let timeline;
 	try {
-		patient = await getPatient(id);
+		[patient, timeline] = await Promise.all([
+			getPatient(id),
+			getTimeline({ patientId: id, limit: 20 }),
+		]);
 	} catch (error) {
 		if (error instanceof Error && error.message.includes("missing auth context")) {
 			redirect("/select-organization");
@@ -94,13 +99,13 @@ export default async function PatientDetailsPage({ params }: PageProps) {
 		<div className="container mx-auto max-w-4xl space-y-6">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-3xl font-semibold">Prontuario do paciente</h1>
+					<h1 className="text-3xl font-semibold">Patient Record</h1>
 					<p className="text-muted-foreground mt-1 text-sm">
 						ID: {patient.id}
 					</p>
 				</div>
 				<Button asChild variant="outline">
-					<Link href="/dashboard/patients">Voltar</Link>
+					<Link href="/dashboard/patients">Back</Link>
 				</Button>
 			</div>
 
@@ -108,7 +113,7 @@ export default async function PatientDetailsPage({ params }: PageProps) {
 				<CardHeader>
 					<CardTitle>{patient.name}</CardTitle>
 					<CardDescription>
-						Atualize os dados cadastrais e status clinico do paciente.
+						Update patient registration data and clinical status.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
@@ -121,7 +126,7 @@ export default async function PatientDetailsPage({ params }: PageProps) {
 							name="email"
 							type="email"
 							defaultValue={patient.email ?? ""}
-							placeholder="E-mail"
+							placeholder="Email"
 						/>
 						<Input name="phone" defaultValue={patient.phone} required />
 						<Input name="birthDate" type="date" defaultValue={patient.birthDate} required />
@@ -132,9 +137,9 @@ export default async function PatientDetailsPage({ params }: PageProps) {
 							className="border-input bg-background h-9 rounded-md border px-3 text-sm"
 							required
 						>
-							<option value="female">Feminino</option>
-							<option value="male">Masculino</option>
-							<option value="other">Outro</option>
+							<option value="female">Female</option>
+							<option value="male">Male</option>
+							<option value="other">Other</option>
 						</select>
 
 						<select
@@ -143,13 +148,13 @@ export default async function PatientDetailsPage({ params }: PageProps) {
 							className="border-input bg-background h-9 rounded-md border px-3 text-sm"
 							required
 						>
-							<option value="active">Ativo</option>
-							<option value="inactive">Inativo</option>
-							<option value="archived">Arquivado</option>
+							<option value="active">Active</option>
+							<option value="inactive">Inactive</option>
+							<option value="archived">Archived</option>
 						</select>
 
 						<div className="md:col-span-2 flex items-center gap-2">
-							<Button type="submit">Salvar alteracoes</Button>
+							<Button type="submit">Save Changes</Button>
 						</div>
 					</form>
 				</CardContent>
@@ -157,20 +162,43 @@ export default async function PatientDetailsPage({ params }: PageProps) {
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Acoes de prontuario</CardTitle>
+					<CardTitle>Quick Actions</CardTitle>
 					<CardDescription>
-						Arquivar remove o paciente das operacoes ativas, mantendo historico.
+						Access patient-related modules and features.
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="flex flex-wrap gap-3">
+					<Button asChild variant="outline">
+						<Link href={`/dashboard/patients/${patient.id}/exams`}>
+							View Exams
+						</Link>
+					</Button>
+					<Button asChild variant="outline">
+						<Link href={`/dashboard/patients/${patient.id}/exams/upload`}>
+							Upload Exam
+						</Link>
+					</Button>
+				</CardContent>
+			</Card>
+
+			<Card>
+				<CardHeader>
+					<CardTitle>Record Actions</CardTitle>
+					<CardDescription>
+						Archiving removes the patient from active operations while preserving history.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<form action={archivePatientAction}>
 						<input name="id" type="hidden" defaultValue={patient.id} />
 						<Button type="submit" variant="destructive">
-							Arquivar paciente
+							Archive Patient
 						</Button>
 					</form>
 				</CardContent>
 			</Card>
+
+			<PatientTimeline events={timeline.items} total={timeline.total} />
 		</div>
 	);
 }
