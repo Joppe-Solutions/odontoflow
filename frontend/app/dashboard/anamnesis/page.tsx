@@ -11,9 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { listTemplates, listSubmissions, type SubmissionStatus } from "@/lib/api/anamnesis-server";
-import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { ClipboardList, Plus, FileText, Clock, CheckCircle, XCircle } from "lucide-react";
 
 const STATUS_BADGES: Record<SubmissionStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -31,24 +29,12 @@ const STATUS_ICONS: Record<SubmissionStatus, React.ReactNode> = {
 };
 
 export default async function AnamnesisPage() {
-	const { orgId } = await auth();
-	if (!orgId) {
-		redirect("/select-organization");
-	}
-
 	let templates;
 	let submissions;
-	try {
-		[templates, submissions] = await Promise.all([
-			listTemplates({ limit: 50 }),
-			listSubmissions({ limit: 50 }),
-		]);
-	} catch (error) {
-		if (error instanceof Error && error.message.includes("missing auth context")) {
-			redirect("/select-organization");
-		}
-		throw error;
-	}
+	[templates, submissions] = await Promise.all([
+		listTemplates({ limit: 50 }),
+		listSubmissions({ limit: 50 }),
+	]);
 
 	return (
 		<div className="container mx-auto max-w-6xl space-y-6">
@@ -206,16 +192,10 @@ export default async function AnamnesisPage() {
 																</Link>
 															</Button>
 														) : (
-															<Button
-																size="sm"
-																variant="ghost"
-																onClick={() => {
-																	navigator.clipboard.writeText(
-																		`${window.location.origin}/form/${submission.token}`
-																	);
-																}}
-															>
-																Copy Link
+															<Button asChild size="sm" variant="ghost">
+																<Link href={`/form/${submission.token}`} target="_blank">
+																	Open Form
+																</Link>
 															</Button>
 														)}
 													</TableCell>

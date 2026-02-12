@@ -108,7 +108,7 @@ function getEncoreBaseUrl(): string {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-	const { getToken } = await auth();
+	const { getToken, orgId } = await auth();
 	const token = await getToken();
 
 	if (!token) {
@@ -120,6 +120,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 		headers: {
 			"Content-Type": "application/json",
 			Authorization: `Bearer ${token}`,
+			...(orgId ? { "X-Organization-Id": orgId } : {}),
 			...(init?.headers || {}),
 		},
 		cache: "no-store",

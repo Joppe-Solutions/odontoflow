@@ -7,31 +7,26 @@ const isPublicRoute = createRouteMatcher([
 	"/sign-in(.*)",
 	"/form/(.*)",
 ]);
-const isOrgRequiredRoute = createRouteMatcher([
-	"/dashboard/patients(.*)",
-	"/dashboard/subscription(.*)",
-	"/dashboard/anamnesis(.*)",
-]);
+
+// All dashboard routes require an organization
+const isDashboardRoute = createRouteMatcher(["/dashboard(.*)"]);
 
 export default clerkMiddleware(async (auth, request) => {
 	const isPublic = isPublicRoute(request);
+
 	if (!isPublic) {
 		await auth.protect();
 	}
 
-	// Only force org selection on routes that strictly require an organization.
-	// This avoids locking users in a redirect loop when Clerk org activation fails.
-	if (
-		!isPublic &&
-		isOrgRequiredRoute(request) &&
-		request.nextUrl.pathname !== "/select-organization"
-	) {
-		const user = await auth();
+	// All dashboard routes require an organization
+	if (isDashboardRoute(request) && request.nextUrl.pathname !== "/select-organization") {
+		const { orgId } = await auth();
 
-		if (!user.orgId) {
-			return NextResponse.redirect(
-				new URL("/select-organization", request.url),
-			);
+		if (!orgId) {
+			const selectOrgUrl = new URL("/select-organization", request.url);
+			const redirectPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+			selectOrgUrl.searchParams.set("redirect_url", redirectPath);
+			return NextResponse.redirect(selectOrgUrl);
 		}
 	}
 });

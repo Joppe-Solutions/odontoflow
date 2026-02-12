@@ -1,7 +1,6 @@
 import { getPatient } from "@/lib/api/patients-server";
 import { getExam, getPatientMarkerNames, getMarkerEvolution } from "@/lib/api/exams-server";
-import { auth } from "@clerk/nextjs/server";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ExamDetailClient } from "./exam-detail-client";
 
 interface PageProps {
@@ -10,11 +9,6 @@ interface PageProps {
 }
 
 export default async function ExamDetailPage({ params, searchParams }: PageProps) {
-	const { orgId } = await auth();
-	if (!orgId) {
-		redirect("/select-organization");
-	}
-
 	const { id: patientId, examId } = await params;
 	const { marker: selectedMarker } = await searchParams;
 
@@ -35,10 +29,7 @@ export default async function ExamDetailPage({ params, searchParams }: PageProps
 		if (markerToFetch) {
 			evolution = await getMarkerEvolution(patientId, markerToFetch);
 		}
-	} catch (error) {
-		if (error instanceof Error && error.message.includes("missing auth context")) {
-			redirect("/select-organization");
-		}
+	} catch {
 		notFound();
 	}
 

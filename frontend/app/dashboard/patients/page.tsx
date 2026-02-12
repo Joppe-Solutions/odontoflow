@@ -15,7 +15,6 @@ import {
 	type PatientGender,
 	type PatientStatus,
 } from "@/lib/api/patients-server";
-import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -44,11 +43,7 @@ function parseStatus(value?: string): PatientStatus | undefined {
 async function createPatientAction(formData: FormData) {
 	"use server";
 
-	const { orgId } = await auth();
-	if (!orgId) {
-		redirect("/select-organization");
-	}
-
+	// Server actions are protected by middleware, so org is guaranteed
 	const gender = formData.get("gender");
 	if (gender !== "male" && gender !== "female" && gender !== "other") {
 		throw new Error("Invalid gender");
@@ -68,29 +63,17 @@ async function createPatientAction(formData: FormData) {
 }
 
 export default async function PatientsPage({ searchParams }: PageProps) {
-	const { orgId } = await auth();
-	if (!orgId) {
-		redirect("/select-organization");
-	}
-
+	// Middleware handles org enforcement, so we can directly fetch data
 	const resolvedSearchParams = await searchParams;
 	const search = readSearchParam(resolvedSearchParams.search) ?? "";
 	const statusFilter = parseStatus(readSearchParam(resolvedSearchParams.status));
 
-	let patients;
-	try {
-		patients = await listPatients({
-			search: search || undefined,
-			status: statusFilter,
-			limit: 50,
-			offset: 0,
-		});
-	} catch (error) {
-		if (error instanceof Error && error.message.includes("missing auth context")) {
-			redirect("/select-organization");
-		}
-		throw error;
-	}
+	const patients = await listPatients({
+		search: search || undefined,
+		status: statusFilter,
+		limit: 50,
+		offset: 0,
+	});
 
 	return (
 		<div className="container mx-auto max-w-6xl space-y-6">

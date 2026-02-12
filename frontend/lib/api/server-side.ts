@@ -19,13 +19,14 @@ if (serverSideEnv.VERCEL_ENV === "production") {
  * Meant to be used to use on the server side.
  */
 export async function getApiClient() {
-	const { getToken } = await auth();
+	const { getToken, orgId } = await auth();
 
 	return new Client(environment, {
 		auth: async () => {
 			const token = await getToken();
 			return {
 				authorization: `Bearer ${token}`,
+				...(orgId ? { "x-organization-id": orgId } : {}),
 			};
 		},
 	});

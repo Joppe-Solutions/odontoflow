@@ -11,9 +11,8 @@ import {
 } from "@/components/ui/table";
 import { getPatient } from "@/lib/api/patients-server";
 import { getPatientExams, type ExamStatus } from "@/lib/api/exams-server";
-import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ArrowLeft, Plus, FileText, Clock, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 
 interface PageProps {
@@ -31,11 +30,6 @@ const STATUS_CONFIG: Record<
 };
 
 export default async function PatientExamsPage({ params }: PageProps) {
-	const { orgId } = await auth();
-	if (!orgId) {
-		redirect("/select-organization");
-	}
-
 	const { id: patientId } = await params;
 
 	let patient;
@@ -45,10 +39,7 @@ export default async function PatientExamsPage({ params }: PageProps) {
 			getPatient(patientId),
 			getPatientExams(patientId),
 		]);
-	} catch (error) {
-		if (error instanceof Error && error.message.includes("missing auth context")) {
-			redirect("/select-organization");
-		}
+	} catch {
 		notFound();
 	}
 

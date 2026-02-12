@@ -21,13 +21,14 @@ if (clientSideEnv.NEXT_PUBLIC_VERCEL_ENV === "production") {
  * Meant to be used to use on the client side.
  */
 export function useApiClient() {
-	const { getToken } = useAuth();
+	const { getToken, orgId } = useAuth();
 
 	return new Client(environment, {
 		auth: async () => {
 			const token = await getToken();
 			return {
 				authorization: `Bearer ${token}`,
+				...(orgId ? { "x-organization-id": orgId } : {}),
 			};
 		},
 	});
