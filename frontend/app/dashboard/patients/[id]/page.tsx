@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { archivePatient, getPatient, type PatientGender, type PatientStatus, updatePatient } from "@/lib/api/patients-server";
+import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
@@ -27,6 +28,11 @@ function toGender(value: string | null): PatientGender | undefined {
 async function updatePatientAction(formData: FormData) {
 	"use server";
 
+	const { orgId } = await auth();
+	if (!orgId) {
+		redirect("/select-organization");
+	}
+
 	const id = String(formData.get("id") || "");
 	if (!id) {
 		throw new Error("Missing patient id");
@@ -51,6 +57,11 @@ async function updatePatientAction(formData: FormData) {
 async function archivePatientAction(formData: FormData) {
 	"use server";
 
+	const { orgId } = await auth();
+	if (!orgId) {
+		redirect("/select-organization");
+	}
+
 	const id = String(formData.get("id") || "");
 	if (!id) {
 		throw new Error("Missing patient id");
@@ -62,12 +73,20 @@ async function archivePatientAction(formData: FormData) {
 }
 
 export default async function PatientDetailsPage({ params }: PageProps) {
+	const { orgId } = await auth();
+	if (!orgId) {
+		redirect("/select-organization");
+	}
+
 	const { id } = await params;
 
 	let patient;
 	try {
 		patient = await getPatient(id);
-	} catch {
+	} catch (error) {
+		if (error instanceof Error && error.message.includes("missing auth context")) {
+			redirect("/select-organization");
+		}
 		notFound();
 	}
 
