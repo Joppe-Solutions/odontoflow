@@ -1,6 +1,7 @@
 import { OrganizationList } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { OrganizationRedirect } from "./organization-redirect";
 
 /**
  * This page renders the Clerk CreateOrganization component.
@@ -15,6 +16,8 @@ export default async function SelectOrganizationPage() {
 
 	return (
 		<div className="min-h-screen flex flex-col gap-4 items-center justify-center">
+			<OrganizationRedirect />
+
 			<p>Select an organization to continue.</p>
 
 			<OrganizationList
