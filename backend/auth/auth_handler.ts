@@ -2,6 +2,7 @@ import { verifyToken } from "@clerk/backend";
 import { APIError, Gateway, type Header } from "encore.dev/api";
 import { authHandler } from "encore.dev/auth";
 import { secret } from "encore.dev/config";
+import log from "encore.dev/log";
 
 // This secret is defined in Encore.
 // See https://encore.dev/docs/ts/primitives/secrets for more information.
@@ -40,6 +41,7 @@ export const auth = authHandler<AuthParams, AuthData>(async (params) => {
 			orgID: verifiedToken.org_id ?? "",
 		};
 	} catch (error) {
+		log.error("could not verify clerk token", { error });
 		throw APIError.unauthenticated("could not verify token");
 	}
 });
