@@ -8,7 +8,6 @@ const isPublicRoute = createRouteMatcher([
 	"/form/(.*)",
 	"/api/anamnesis/form/(.*)",
 ]);
-const isDashboardRoute = createRouteMatcher(["/dashboard(.*)"]);
 const isSelectOrganizationRoute = createRouteMatcher(["/select-organization(.*)"]);
 
 function sanitizeRedirectPath(path: string | null): string {
@@ -25,14 +24,9 @@ export default clerkMiddleware(async (auth, request) => {
 		await auth.protect();
 	}
 
+	// Some valid Clerk sessions can arrive without orgId in the claim.
+	// Avoid blocking dashboard routes here to prevent redirect loops.
 	const { orgId } = await auth();
-
-	if (isDashboardRoute(request) && !orgId) {
-		const selectOrgUrl = new URL("/select-organization", request.url);
-		const targetPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
-		selectOrgUrl.searchParams.set("redirect_url", targetPath);
-		return NextResponse.redirect(selectOrgUrl);
-	}
 
 	if (isSelectOrganizationRoute(request) && orgId) {
 		const redirectParam = sanitizeRedirectPath(

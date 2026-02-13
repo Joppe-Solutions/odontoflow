@@ -159,6 +159,11 @@ export default async function PatientDetailsPage({ params }: PageProps) {
 							Upload Exam
 						</Link>
 					</Button>
+					<Button asChild variant="outline">
+						<Link href={`/dashboard/patients/${patient.id}/diagnosis`}>
+							Diagnosis
+						</Link>
+					</Button>
 				</CardContent>
 			</Card>
 

@@ -1,5 +1,7 @@
+import { Button } from "@/components/ui/button";
 import { OrganizationList } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { OrganizationRedirect } from "./organization-redirect";
 
@@ -42,6 +44,10 @@ export default async function SelectOrganizationPage({ searchParams }: PageProps
 				afterCreateOrganizationUrl={afterSelectUrl}
 				hidePersonal
 			/>
+
+			<Button asChild variant="ghost">
+				<Link href={afterSelectUrl}>Continue to dashboard</Link>
+			</Button>
 		</div>
 	);
 }

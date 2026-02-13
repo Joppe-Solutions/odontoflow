@@ -43,7 +43,8 @@ function parseStatus(value?: string): PatientStatus | undefined {
 async function createPatientAction(formData: FormData) {
 	"use server";
 
-	// Server actions are protected by middleware, so org is guaranteed
+	// Server actions are protected by middleware.
+	// Org context is resolved by backend auth fallback when token org claim is absent.
 	const gender = formData.get("gender");
 	if (gender !== "male" && gender !== "female" && gender !== "other") {
 		throw new Error("Invalid gender");
@@ -63,7 +64,7 @@ async function createPatientAction(formData: FormData) {
 }
 
 export default async function PatientsPage({ searchParams }: PageProps) {
-	// Middleware handles org enforcement, so we can directly fetch data
+	// Backend auth resolves org context when possible, so we can directly fetch data.
 	const resolvedSearchParams = await searchParams;
 	const search = readSearchParam(resolvedSearchParams.search) ?? "";
 	const statusFilter = parseStatus(readSearchParam(resolvedSearchParams.status));
