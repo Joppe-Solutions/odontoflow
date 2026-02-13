@@ -1,28 +1,30 @@
 import { cn } from "@/lib/cn";
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { QueryClientProvider } from "./query-client-provider";
 
 import "./globals.css";
 
-const geistSans = Geist({
-	variable: "--font-geist-sans",
+const inter = Inter({
+	variable: "--font-inter",
 	subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-	variable: "--font-geist-mono",
+const plusJakartaSans = Plus_Jakarta_Sans({
+	variable: "--font-plus-jakarta",
 	subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
 	title: {
-		template: "%s | Encore.ts SaaS Starter",
-		default: "Encore.ts SaaS Starter",
+		template: "%s | OdontoFlow",
+		default: "OdontoFlow",
 	},
 	description:
-		"An SaaS Starter template using Encore.ts, Nextjs, Clerk, Stripe, Tailwind and shadcn/ui.",
+		"Plataforma de gestão clínica para odontologia integrativa.",
 };
 
 export default function RootLayout({
@@ -31,12 +33,18 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en">
-			<body
-				className={cn("antialiased", geistSans.variable, geistMono.variable)}
-			>
+		<html lang="pt-BR" suppressHydrationWarning>
+			<body className={cn("antialiased", inter.variable, plusJakartaSans.variable)}>
 				<ClerkProvider>
-					<QueryClientProvider>{children}</QueryClientProvider>
+					<ThemeProvider
+						attribute="class"
+						defaultTheme="light"
+						enableSystem
+						disableTransitionOnChange
+					>
+						<QueryClientProvider>{children}</QueryClientProvider>
+						<Toaster />
+					</ThemeProvider>
 				</ClerkProvider>
 			</body>
 		</html>

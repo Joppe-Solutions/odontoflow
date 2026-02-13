@@ -17,7 +17,7 @@ import {
 	type PrescriptionItemType,
 	type PrescriptionStatus,
 } from "@/lib/api/prescription-server";
-import { ArrowLeft, FilePlus2 } from "lucide-react";
+import { ArrowLeft, FilePlus2, Pill, CheckCircle2, XCircle, FileEdit, AlertTriangle, History } from "lucide-react";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
@@ -26,20 +26,23 @@ interface PageProps {
 	params: Promise<{ id: string }>;
 }
 
-const STATUS_VARIANT: Record<
-	PrescriptionStatus,
-	"default" | "secondary" | "destructive"
-> = {
-	draft: "secondary",
-	signed: "default",
-	cancelled: "destructive",
+const STATUS_CONFIG: Record<PrescriptionStatus, { label: string; variant: "default" | "secondary" | "destructive"; icon: React.ReactNode }> = {
+	draft: { label: "Rascunho", variant: "secondary", icon: <FileEdit className="h-3 w-3" /> },
+	signed: { label: "Assinada", variant: "default", icon: <CheckCircle2 className="h-3 w-3" /> },
+	cancelled: { label: "Cancelada", variant: "destructive", icon: <XCircle className="h-3 w-3" /> },
+};
+
+const ITEM_TYPE_LABELS: Record<PrescriptionItemType, string> = {
+	supplement: "Suplemento",
+	medication: "Medicamento",
+	orientation: "Orientação",
 };
 
 function extractErrorMessage(error: unknown): string {
 	if (error instanceof Error) {
 		return error.message;
 	}
-	return "Unknown error";
+	return "Erro desconhecido";
 }
 
 async function createPrescriptionAction(formData: FormData) {
@@ -47,7 +50,7 @@ async function createPrescriptionAction(formData: FormData) {
 
 	const patientId = String(formData.get("patientId") || "");
 	if (!patientId) {
-		throw new Error("Missing patient id");
+		throw new Error("ID do paciente não informado");
 	}
 
 	const diagnosisIdValue = String(formData.get("diagnosisId") || "").trim();
@@ -61,7 +64,7 @@ async function createPrescriptionAction(formData: FormData) {
 	const validUntil = String(formData.get("validUntil") || "").trim();
 
 	if (!itemName || !dosage || !frequency || !duration) {
-		throw new Error("Missing required prescription fields");
+		throw new Error("Campos obrigatórios da prescrição não preenchidos");
 	}
 
 	await createPrescription({
@@ -93,7 +96,7 @@ async function signPrescriptionAction(formData: FormData) {
 	const patientId = String(formData.get("patientId") || "");
 	const prescriptionId = String(formData.get("prescriptionId") || "");
 	if (!patientId || !prescriptionId) {
-		throw new Error("Missing identifiers");
+		throw new Error("Identificadores ausentes");
 	}
 
 	await signPrescription(prescriptionId);
@@ -109,10 +112,10 @@ async function cancelPrescriptionAction(formData: FormData) {
 	const patientId = String(formData.get("patientId") || "");
 	const prescriptionId = String(formData.get("prescriptionId") || "");
 	if (!patientId || !prescriptionId) {
-		throw new Error("Missing identifiers");
+		throw new Error("Identificadores ausentes");
 	}
 
-	await cancelPrescription(prescriptionId, "Cancelled from patient prescription screen.");
+	await cancelPrescription(prescriptionId, "Cancelada pela tela de prescrições do paciente.");
 	revalidatePath(`/dashboard/patients/${patientId}`);
 	revalidatePath(`/dashboard/patients/${patientId}/prescriptions`);
 	revalidatePath("/dashboard/prescriptions");
@@ -142,89 +145,153 @@ export default async function PatientPrescriptionsPage({ params }: PageProps) {
 	}
 
 	return (
-		<div className="container mx-auto max-w-6xl space-y-6">
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-3xl font-semibold">Prescriptions</h1>
-					<p className="text-muted-foreground mt-1 text-sm">
-						Therapeutic prescriptions for {patient.name}
-					</p>
+		<div className="space-y-6 animate-fade-in">
+			<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+				<div className="flex items-start gap-4">
+					<Button asChild variant="ghost" size="icon" className="shrink-0 mt-1">
+						<Link href={`/dashboard/patients/${patientId}`}>
+							<ArrowLeft className="h-4 w-4" />
+						</Link>
+					</Button>
+					<div>
+						<h1 className="text-2xl font-display font-bold">Prescrições</h1>
+						<p className="text-muted-foreground mt-1">
+							Prescrições terapêuticas para {patient.name}
+						</p>
+					</div>
 				</div>
 				<Button asChild variant="outline">
-					<Link href={`/dashboard/patients/${patientId}`}>
-						<ArrowLeft className="h-4 w-4 mr-2" />
-						Back to Patient
+					<Link href={`/dashboard/patients/${patientId}/diagnosis`}>
+						Ver Diagnóstico
 					</Link>
 				</Button>
 			</div>
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Create Prescription Draft</CardTitle>
-					<CardDescription>
-						{prescriptionError
-							? "Prescription service unavailable in current backend environment."
-							: "Generate a new prescription item and link it to a diagnosis if desired."}
-					</CardDescription>
+					<div className="flex items-center gap-3">
+						<div className="h-10 w-10 rounded-lg bg-pink-500/10 flex items-center justify-center">
+							<FilePlus2 className="h-5 w-5 text-pink-500" />
+						</div>
+						<div>
+							<CardTitle className="text-lg font-display">Nova Prescrição</CardTitle>
+							<CardDescription>
+								{prescriptionError
+									? "Serviço de prescrições indisponível no ambiente atual."
+									: "Crie um rascunho de prescrição e vincule a um diagnóstico se desejar."}
+							</CardDescription>
+						</div>
+					</div>
 				</CardHeader>
 				<CardContent>
 					{prescriptionError ? (
-						<p className="text-sm text-muted-foreground">{prescriptionError}</p>
+						<div className="flex items-center gap-3 p-4 bg-destructive/10 text-destructive rounded-lg">
+							<AlertTriangle className="h-5 w-5 shrink-0" />
+							<p className="text-sm">{prescriptionError}</p>
+						</div>
 					) : (
-						<form action={createPrescriptionAction} className="grid grid-cols-1 gap-3 md:grid-cols-2">
-						<input type="hidden" name="patientId" value={patientId} />
+						<form action={createPrescriptionAction} className="space-y-4">
+							<input type="hidden" name="patientId" value={patientId} />
 
-						<select
-							name="diagnosisId"
-							defaultValue=""
-							className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-						>
-							<option value="">No linked diagnosis</option>
-							{diagnoses.items.map((diagnosis) => (
-								<option key={diagnosis.id} value={diagnosis.id}>
-									{diagnosis.summary}
-								</option>
-							))}
-						</select>
+							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+								<div className="space-y-2">
+									<label htmlFor="diagnosisId" className="text-sm font-medium">
+										Diagnóstico vinculado (opcional)
+									</label>
+									<select
+										id="diagnosisId"
+										name="diagnosisId"
+										defaultValue=""
+										className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+									>
+										<option value="">Nenhum diagnóstico vinculado</option>
+										{diagnoses.items.map((diagnosis) => (
+											<option key={diagnosis.id} value={diagnosis.id}>
+												{diagnosis.summary}
+											</option>
+										))}
+									</select>
+								</div>
 
-						<select
-							name="itemType"
-							defaultValue="supplement"
-							className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-							required
-						>
-							<option value="supplement">Supplement</option>
-							<option value="medication">Medication</option>
-							<option value="orientation">Orientation</option>
-						</select>
+								<div className="space-y-2">
+									<label htmlFor="itemType" className="text-sm font-medium">
+										Tipo do item
+									</label>
+									<select
+										id="itemType"
+										name="itemType"
+										defaultValue="supplement"
+										className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+										required
+									>
+										<option value="supplement">Suplemento</option>
+										<option value="medication">Medicamento</option>
+										<option value="orientation">Orientação</option>
+									</select>
+								</div>
 
-						<Input name="itemName" placeholder="Item name" required />
-						<Input name="dosage" placeholder="Dosage (e.g. 2000 IU)" required />
-						<Input name="frequency" placeholder="Frequency (e.g. 1x/day)" required />
-						<Input name="duration" placeholder="Duration (e.g. 60 days)" required />
-						<Input
-							name="validUntil"
-							type="date"
-							placeholder="Valid until"
-						/>
+								<div className="space-y-2">
+									<label htmlFor="itemName" className="text-sm font-medium">
+										Nome do item
+									</label>
+									<Input id="itemName" name="itemName" placeholder="Ex: Vitamina D3" required />
+								</div>
 
-						<Textarea
-							name="instructions"
-							placeholder="Item instructions (optional)"
-							className="md:col-span-2"
-						/>
-						<Textarea
-							name="notes"
-							placeholder="General prescription notes (optional)"
-							className="md:col-span-2"
-						/>
+								<div className="space-y-2">
+									<label htmlFor="dosage" className="text-sm font-medium">
+										Dosagem
+									</label>
+									<Input id="dosage" name="dosage" placeholder="Ex: 2000 UI" required />
+								</div>
 
-						<div className="md:col-span-2">
+								<div className="space-y-2">
+									<label htmlFor="frequency" className="text-sm font-medium">
+										Frequência
+									</label>
+									<Input id="frequency" name="frequency" placeholder="Ex: 1x ao dia" required />
+								</div>
+
+								<div className="space-y-2">
+									<label htmlFor="duration" className="text-sm font-medium">
+										Duração
+									</label>
+									<Input id="duration" name="duration" placeholder="Ex: 60 dias" required />
+								</div>
+
+								<div className="space-y-2">
+									<label htmlFor="validUntil" className="text-sm font-medium">
+										Válido até (opcional)
+									</label>
+									<Input id="validUntil" name="validUntil" type="date" />
+								</div>
+							</div>
+
+							<div className="space-y-2">
+								<label htmlFor="instructions" className="text-sm font-medium">
+									Instruções do item (opcional)
+								</label>
+								<Textarea
+									id="instructions"
+									name="instructions"
+									placeholder="Ex: Tomar com uma refeição gordurosa para melhor absorção"
+								/>
+							</div>
+
+							<div className="space-y-2">
+								<label htmlFor="notes" className="text-sm font-medium">
+									Observações gerais (opcional)
+								</label>
+								<Textarea
+									id="notes"
+									name="notes"
+									placeholder="Notas adicionais sobre a prescrição"
+								/>
+							</div>
+
 							<Button type="submit">
 								<FilePlus2 className="h-4 w-4 mr-2" />
-								Create Draft
+								Criar Rascunho
 							</Button>
-						</div>
 						</form>
 					)}
 				</CardContent>
@@ -232,80 +299,113 @@ export default async function PatientPrescriptionsPage({ params }: PageProps) {
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Prescription History</CardTitle>
-					<CardDescription>Total prescriptions: {prescriptions.total}</CardDescription>
+					<div className="flex items-center gap-3">
+						<div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+							<History className="h-5 w-5 text-muted-foreground" />
+						</div>
+						<div>
+							<CardTitle className="text-lg font-display">Histórico de Prescrições</CardTitle>
+							<CardDescription>
+								{prescriptions.total} prescrição{prescriptions.total !== 1 ? "ões" : ""} registrada{prescriptions.total !== 1 ? "s" : ""}
+							</CardDescription>
+						</div>
+					</div>
 				</CardHeader>
 				<CardContent>
 					{prescriptionError ? (
-						<p className="text-sm text-muted-foreground">{prescriptionError}</p>
+						<div className="flex items-center gap-3 p-4 bg-destructive/10 text-destructive rounded-lg">
+							<AlertTriangle className="h-5 w-5 shrink-0" />
+							<p className="text-sm">{prescriptionError}</p>
+						</div>
 					) : prescriptions.items.length === 0 ? (
-						<p className="text-sm text-muted-foreground">No prescriptions created yet.</p>
+						<div className="text-center py-12">
+							<Pill className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
+							<p className="font-medium">Nenhuma prescrição criada</p>
+							<p className="text-sm text-muted-foreground mt-1">
+								Crie a primeira prescrição para este paciente.
+							</p>
+						</div>
 					) : (
-						<div className="space-y-3">
-							{prescriptions.items.map((prescription) => (
-								<div key={prescription.id} className="rounded-md border p-4 space-y-3">
-									<div className="flex items-center justify-between gap-2 flex-wrap">
-										<div>
-											<p className="text-sm font-medium">
-												{prescription.items[0]?.name || "Prescription"}
-											</p>
-											<p className="text-xs text-muted-foreground">
-												Created on{" "}
-												{new Date(prescription.createdAt).toLocaleString("en-US")}
-											</p>
-										</div>
-										<div className="flex items-center gap-2">
-											<Badge variant={STATUS_VARIANT[prescription.status]}>
-												{prescription.status}
-											</Badge>
-											<Badge variant="outline">
-												{prescription.items.length} item(s)
-											</Badge>
-										</div>
-									</div>
-
-									<div className="space-y-1 text-sm">
-										{prescription.items.map((item) => (
-											<div key={item.id}>
-												<span className="font-medium">{item.name}</span>{" "}
-												- {item.dosage} - {item.frequency} - {item.duration}
+						<div className="space-y-4">
+							{prescriptions.items.map((prescription) => {
+								const statusConfig = STATUS_CONFIG[prescription.status];
+								return (
+									<div key={prescription.id} className="rounded-lg border p-4 space-y-4">
+										<div className="flex items-start justify-between gap-3 flex-wrap">
+											<div>
+												<p className="font-medium">
+													{prescription.items[0]?.name || "Prescrição"}
+												</p>
+												<p className="text-xs text-muted-foreground mt-1">
+													Criado em{" "}
+													{new Date(prescription.createdAt).toLocaleString("pt-BR", {
+														dateStyle: "long",
+														timeStyle: "short",
+													})}
+												</p>
 											</div>
-										))}
-									</div>
-
-									{prescription.notes && (
-										<p className="text-sm text-muted-foreground">{prescription.notes}</p>
-									)}
-
-									{prescription.status === "draft" && (
-										<div className="flex gap-2">
-											<form action={signPrescriptionAction}>
-												<input type="hidden" name="patientId" value={patientId} />
-												<input
-													type="hidden"
-													name="prescriptionId"
-													value={prescription.id}
-												/>
-												<Button type="submit" size="sm">
-													Mark as Signed
-												</Button>
-											</form>
-
-											<form action={cancelPrescriptionAction}>
-												<input type="hidden" name="patientId" value={patientId} />
-												<input
-													type="hidden"
-													name="prescriptionId"
-													value={prescription.id}
-												/>
-												<Button type="submit" variant="destructive" size="sm">
-													Cancel
-												</Button>
-											</form>
+											<div className="flex items-center gap-2">
+												<Badge variant={statusConfig.variant} className="gap-1">
+													{statusConfig.icon}
+													{statusConfig.label}
+												</Badge>
+												<Badge variant="outline">
+													{prescription.items.length} item{prescription.items.length !== 1 ? "s" : ""}
+												</Badge>
+											</div>
 										</div>
-									)}
-								</div>
-							))}
+
+										<div className="space-y-2">
+											{prescription.items.map((item) => (
+												<div key={item.id} className="p-3 bg-muted/50 rounded-lg">
+													<div className="flex items-center gap-2 flex-wrap">
+														<Badge variant="secondary" className="text-xs">
+															{ITEM_TYPE_LABELS[item.type]}
+														</Badge>
+														<span className="font-medium text-sm">{item.name}</span>
+													</div>
+													<p className="text-sm text-muted-foreground mt-1">
+														{item.dosage} - {item.frequency} - {item.duration}
+													</p>
+													{item.instructions && (
+														<p className="text-xs text-muted-foreground mt-1">
+															{item.instructions}
+														</p>
+													)}
+												</div>
+											))}
+										</div>
+
+										{prescription.notes && (
+											<p className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
+												{prescription.notes}
+											</p>
+										)}
+
+										{prescription.status === "draft" && (
+											<div className="flex gap-2 pt-2">
+												<form action={signPrescriptionAction}>
+													<input type="hidden" name="patientId" value={patientId} />
+													<input type="hidden" name="prescriptionId" value={prescription.id} />
+													<Button type="submit" size="sm">
+														<CheckCircle2 className="h-4 w-4 mr-2" />
+														Assinar
+													</Button>
+												</form>
+
+												<form action={cancelPrescriptionAction}>
+													<input type="hidden" name="patientId" value={patientId} />
+													<input type="hidden" name="prescriptionId" value={prescription.id} />
+													<Button type="submit" variant="destructive" size="sm">
+														<XCircle className="h-4 w-4 mr-2" />
+														Cancelar
+													</Button>
+												</form>
+											</div>
+										)}
+									</div>
+								);
+							})}
 						</div>
 					)}
 				</CardContent>

@@ -13,7 +13,7 @@ import { getPatient } from "@/lib/api/patients-server";
 import { getPatientExams, type ExamStatus } from "@/lib/api/exams-server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Plus, FileText, Clock, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, FileSearch, Clock, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 
 interface PageProps {
 	params: Promise<{ id: string }>;
@@ -23,10 +23,20 @@ const STATUS_CONFIG: Record<
 	ExamStatus,
 	{ label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }
 > = {
-	pending: { label: "Pending", variant: "secondary", icon: <Clock className="h-3 w-3" /> },
-	processing: { label: "Processing", variant: "default", icon: <Loader2 className="h-3 w-3 animate-spin" /> },
-	ready: { label: "Ready", variant: "outline", icon: <CheckCircle className="h-3 w-3" /> },
-	error: { label: "Error", variant: "destructive", icon: <AlertCircle className="h-3 w-3" /> },
+	pending: { label: "Pendente", variant: "secondary", icon: <Clock className="h-3 w-3" /> },
+	processing: { label: "Processando", variant: "default", icon: <Loader2 className="h-3 w-3 animate-spin" /> },
+	ready: { label: "Pronto", variant: "outline", icon: <CheckCircle className="h-3 w-3" /> },
+	error: { label: "Erro", variant: "destructive", icon: <AlertCircle className="h-3 w-3" /> },
+};
+
+const TYPE_LABELS: Record<string, string> = {
+	blood_test: "Hemograma",
+	urine_test: "Urina",
+	imaging: "Imagem",
+	ecg: "ECG",
+	ultrasound: "Ultrassom",
+	biopsy: "Biópsia",
+	other: "Outro",
 };
 
 export default async function PatientExamsPage({ params }: PageProps) {
@@ -44,96 +54,110 @@ export default async function PatientExamsPage({ params }: PageProps) {
 	}
 
 	return (
-		<div className="container mx-auto max-w-6xl space-y-6">
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-3xl font-semibold">Exams</h1>
-					<p className="text-muted-foreground mt-1 text-sm">
-						{patient.name} - {exams.total} exam{exams.total !== 1 ? "s" : ""}
-					</p>
-				</div>
-				<div className="flex gap-2">
-					<Button asChild variant="outline">
+		<div className="space-y-6 animate-fade-in">
+			<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+				<div className="flex items-start gap-4">
+					<Button asChild variant="ghost" size="icon" className="shrink-0 mt-1">
 						<Link href={`/dashboard/patients/${patientId}`}>
-							<ArrowLeft className="h-4 w-4 mr-2" />
-							Back to Patient
+							<ArrowLeft className="h-4 w-4" />
 						</Link>
 					</Button>
-					<Button asChild>
-						<Link href={`/dashboard/patients/${patientId}/exams/upload`}>
-							<Plus className="h-4 w-4 mr-2" />
-							Upload Exam
-						</Link>
-					</Button>
+					<div>
+						<h1 className="text-2xl font-display font-bold">Exames</h1>
+						<p className="text-muted-foreground mt-1">
+							{patient.name} - {exams.total} exame{exams.total !== 1 ? "s" : ""}
+						</p>
+					</div>
 				</div>
+				<Button asChild>
+					<Link href={`/dashboard/patients/${patientId}/exams/upload`}>
+						<Plus className="h-4 w-4 mr-2" />
+						Enviar Exame
+					</Link>
+				</Button>
 			</div>
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Exam History</CardTitle>
-					<CardDescription>
-						View and manage patient exam results.
-					</CardDescription>
+					<div className="flex items-center gap-3">
+						<div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+							<FileSearch className="h-5 w-5 text-orange-500" />
+						</div>
+						<div>
+							<CardTitle className="text-lg font-display">Histórico de Exames</CardTitle>
+							<CardDescription>
+								Visualize e gerencie os resultados dos exames do paciente.
+							</CardDescription>
+						</div>
+					</div>
 				</CardHeader>
 				<CardContent>
 					{exams.items.length === 0 ? (
-						<div className="text-center py-8">
-							<FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-							<p className="text-muted-foreground">No exams uploaded yet.</p>
-							<Button asChild className="mt-4">
+						<div className="text-center py-12">
+							<FileSearch className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
+							<p className="font-medium">Nenhum exame enviado ainda</p>
+							<p className="text-muted-foreground text-sm mt-1">
+								Envie o primeiro exame do paciente para começar a análise.
+							</p>
+							<Button asChild className="mt-6">
 								<Link href={`/dashboard/patients/${patientId}/exams/upload`}>
-									Upload first exam
+									<Plus className="h-4 w-4 mr-2" />
+									Enviar primeiro exame
 								</Link>
 							</Button>
 						</div>
 					) : (
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Exam</TableHead>
-									<TableHead>Type</TableHead>
-									<TableHead>Status</TableHead>
-									<TableHead>Date</TableHead>
-									<TableHead className="text-right">Actions</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{exams.items.map((exam) => {
-									const statusConfig = STATUS_CONFIG[exam.status];
-									return (
-										<TableRow key={exam.id}>
-											<TableCell>
-												<div className="font-medium">{exam.name}</div>
-												{exam.fileName && (
-													<div className="text-muted-foreground text-xs">
-														{exam.fileName}
-													</div>
-												)}
-											</TableCell>
-											<TableCell>
-												<Badge variant="outline">{exam.type}</Badge>
-											</TableCell>
-											<TableCell>
-												<Badge variant={statusConfig.variant} className="gap-1">
-													{statusConfig.icon}
-													{statusConfig.label}
-												</Badge>
-											</TableCell>
-											<TableCell>
-												{new Date(exam.createdAt).toLocaleDateString("en-US")}
-											</TableCell>
-											<TableCell className="text-right">
-												<Button asChild size="sm" variant="outline">
-													<Link href={`/dashboard/patients/${patientId}/exams/${exam.id}`}>
-														View Details
-													</Link>
-												</Button>
-											</TableCell>
-										</TableRow>
-									);
-								})}
-							</TableBody>
-						</Table>
+						<div className="rounded-md border">
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>Exame</TableHead>
+										<TableHead>Tipo</TableHead>
+										<TableHead>Status</TableHead>
+										<TableHead>Data</TableHead>
+										<TableHead className="text-right">Ações</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{exams.items.map((exam) => {
+										const statusConfig = STATUS_CONFIG[exam.status];
+										return (
+											<TableRow key={exam.id}>
+												<TableCell>
+													<div className="font-medium">{exam.name}</div>
+													{exam.fileName && (
+														<div className="text-muted-foreground text-xs">
+															{exam.fileName}
+														</div>
+													)}
+												</TableCell>
+												<TableCell>
+													<Badge variant="outline">
+														{TYPE_LABELS[exam.type] || exam.type}
+													</Badge>
+												</TableCell>
+												<TableCell>
+													<Badge variant={statusConfig.variant} className="gap-1">
+														{statusConfig.icon}
+														{statusConfig.label}
+													</Badge>
+												</TableCell>
+												<TableCell className="text-muted-foreground">
+													{new Date(exam.createdAt).toLocaleDateString("pt-BR")}
+												</TableCell>
+												<TableCell className="text-right">
+													<Button asChild size="sm" variant="outline">
+														<Link href={`/dashboard/patients/${patientId}/exams/${exam.id}`}>
+															Ver detalhes
+														</Link>
+													</Button>
+												</TableCell>
+											</TableRow>
+										);
+									})}
+								</TableBody>
+							</Table>
+						</div>
 					)}
 				</CardContent>
 			</Card>

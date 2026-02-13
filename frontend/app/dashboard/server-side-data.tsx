@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import {
 	Card,
 	CardContent,
@@ -5,13 +6,10 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { getApiClient } from "@/lib/api/server-side";
+import { Activity, ClipboardList, FileSearch, Users } from "lucide-react";
 
 interface DashboardStats {
-	totalUsers: number;
-	totalOrders: number;
-	totalRevenue: number;
 	totalPatients: number;
 	activePatients: number;
 	archivedPatients: number;
@@ -25,12 +23,16 @@ interface DashboardStats {
 	inProgressSubmissions: number;
 	pendingSubmissions: number;
 	expiredSubmissions: number;
-	totalPrescriptions: number;
-	draftPrescriptions: number;
-	signedPrescriptions: number;
-	cancelledPrescriptions: number;
+	totalPrescriptions?: number;
+	draftPrescriptions?: number;
+	signedPrescriptions?: number;
+	cancelledPrescriptions?: number;
 	hasActiveSubscription: boolean;
 	activeSubscriptionPriceId?: string;
+}
+
+function formatNumber(value: number | undefined) {
+	return String(value ?? 0);
 }
 
 export async function ServerSideData() {
@@ -38,132 +40,104 @@ export async function ServerSideData() {
 		const apiClient = await getApiClient();
 		const data = (await apiClient.admin.getDashboardData()) as unknown as DashboardStats;
 
+		const stats = [
+			{
+				title: "Pacientes ativos",
+				value: formatNumber(data.activePatients),
+				icon: Users,
+				color: "text-primary",
+			},
+			{
+				title: "Anamneses pendentes",
+				value: formatNumber(data.pendingSubmissions),
+				icon: ClipboardList,
+				color: "text-info",
+			},
+			{
+				title: "Exames recentes",
+				value: formatNumber(data.totalExams),
+				icon: FileSearch,
+				color: "text-warning",
+			},
+			{
+				title: "Prescrições assinadas",
+				value: formatNumber(data.signedPrescriptions),
+				icon: Activity,
+				color: "text-success",
+			},
+		];
+
 		return (
-			<div className="space-y-6">
+			<div className="space-y-6 animate-fade-in">
 				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-					<Card>
-						<CardHeader className="pb-2">
-							<CardDescription>Total Patients</CardDescription>
-							<CardTitle className="text-3xl">{data.totalPatients}</CardTitle>
-						</CardHeader>
-						<CardContent className="text-xs text-muted-foreground">
-							Active: {data.activePatients} | Archived: {data.archivedPatients}
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader className="pb-2">
-							<CardDescription>Total Exams</CardDescription>
-							<CardTitle className="text-3xl">{data.totalExams}</CardTitle>
-						</CardHeader>
-						<CardContent className="text-xs text-muted-foreground">
-							Ready: {data.readyExams} | Processing: {data.processingExams}
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader className="pb-2">
-							<CardDescription>Anamnesis Submissions</CardDescription>
-							<CardTitle className="text-3xl">{data.totalAnamnesisSubmissions}</CardTitle>
-						</CardHeader>
-						<CardContent className="text-xs text-muted-foreground">
-							Completed: {data.completedSubmissions} | In Progress: {data.inProgressSubmissions}
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader className="pb-2">
-							<CardDescription>Total Prescriptions</CardDescription>
-							<CardTitle className="text-3xl">{data.totalPrescriptions}</CardTitle>
-						</CardHeader>
-						<CardContent className="text-xs text-muted-foreground">
-							Draft: {data.draftPrescriptions} | Signed: {data.signedPrescriptions}
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader className="pb-2">
-							<CardDescription>Subscription</CardDescription>
-							<CardTitle className="text-base font-semibold">
-								{data.hasActiveSubscription ? "Active" : "Not Active"}
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<Badge variant={data.hasActiveSubscription ? "default" : "secondary"}>
-								{data.activeSubscriptionPriceId ?? "No current plan"}
-							</Badge>
-						</CardContent>
-					</Card>
+					{stats.map((stat) => (
+						<Card key={stat.title} className="hover:shadow-md transition-shadow">
+							<CardHeader className="flex flex-row items-center justify-between pb-2">
+								<CardDescription className="text-sm font-medium">
+									{stat.title}
+								</CardDescription>
+								<stat.icon className={`h-4 w-4 ${stat.color}`} />
+							</CardHeader>
+							<CardContent>
+								<p className="text-3xl font-display font-bold">{stat.value}</p>
+							</CardContent>
+						</Card>
+					))}
 				</div>
 
-				<div className="grid gap-4 lg:grid-cols-3">
+				<div className="grid gap-4 lg:grid-cols-2">
 					<Card>
 						<CardHeader>
-							<CardTitle>Exams Pipeline</CardTitle>
-							<CardDescription>Current workload and review status.</CardDescription>
+							<CardTitle className="text-lg font-display">Pipeline clínico</CardTitle>
+							<CardDescription>Status atual de exames e anamneses</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-2 text-sm">
 							<div className="flex justify-between">
-								<span>Pending</span>
-								<span className="font-medium">{data.pendingExams}</span>
+								<span>Exames pendentes</span>
+								<span className="font-medium">{formatNumber(data.pendingExams)}</span>
 							</div>
 							<div className="flex justify-between">
-								<span>Processing</span>
-								<span className="font-medium">{data.processingExams}</span>
+								<span>Exames em processamento</span>
+								<span className="font-medium">{formatNumber(data.processingExams)}</span>
 							</div>
 							<div className="flex justify-between">
-								<span>Ready</span>
-								<span className="font-medium">{data.readyExams}</span>
+								<span>Submissões em progresso</span>
+								<span className="font-medium">{formatNumber(data.inProgressSubmissions)}</span>
 							</div>
 							<div className="flex justify-between">
-								<span>Error</span>
-								<span className="font-medium">{data.errorExams}</span>
+								<span>Submissões expiradas</span>
+								<span className="font-medium">{formatNumber(data.expiredSubmissions)}</span>
 							</div>
 						</CardContent>
 					</Card>
 
 					<Card>
 						<CardHeader>
-							<CardTitle>Anamnesis Pipeline</CardTitle>
-							<CardDescription>Form statuses across all patients.</CardDescription>
+							<CardTitle className="text-lg font-display">Assinatura e produção</CardTitle>
+							<CardDescription>Plano atual e volume operacional da clínica</CardDescription>
 						</CardHeader>
-						<CardContent className="space-y-2 text-sm">
-							<div className="flex justify-between">
-								<span>Pending</span>
-								<span className="font-medium">{data.pendingSubmissions}</span>
+						<CardContent className="space-y-3">
+							<div className="flex items-center justify-between">
+								<span className="text-sm">Assinatura</span>
+								<Badge variant={data.hasActiveSubscription ? "default" : "secondary"}>
+									{data.hasActiveSubscription ? "Ativa" : "Inativa"}
+								</Badge>
 							</div>
-							<div className="flex justify-between">
-								<span>In Progress</span>
-								<span className="font-medium">{data.inProgressSubmissions}</span>
+							<div className="flex items-center justify-between">
+								<span className="text-sm">Plano</span>
+								<span className="text-sm font-medium">
+									{data.activeSubscriptionPriceId ?? "Sem plano ativo"}
+								</span>
 							</div>
-							<div className="flex justify-between">
-								<span>Completed</span>
-								<span className="font-medium">{data.completedSubmissions}</span>
+							<div className="flex items-center justify-between">
+								<span className="text-sm">Total de pacientes</span>
+								<span className="text-sm font-medium">{formatNumber(data.totalPatients)}</span>
 							</div>
-							<div className="flex justify-between">
-								<span>Expired</span>
-								<span className="font-medium">{data.expiredSubmissions}</span>
-							</div>
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader>
-							<CardTitle>Prescription Pipeline</CardTitle>
-							<CardDescription>Current prescription lifecycle status.</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-2 text-sm">
-							<div className="flex justify-between">
-								<span>Draft</span>
-								<span className="font-medium">{data.draftPrescriptions}</span>
-							</div>
-							<div className="flex justify-between">
-								<span>Signed</span>
-								<span className="font-medium">{data.signedPrescriptions}</span>
-							</div>
-							<div className="flex justify-between">
-								<span>Cancelled</span>
-								<span className="font-medium">{data.cancelledPrescriptions}</span>
+							<div className="flex items-center justify-between">
+								<span className="text-sm">Anamneses concluídas</span>
+								<span className="text-sm font-medium">
+									{formatNumber(data.completedSubmissions)}
+								</span>
 							</div>
 						</CardContent>
 					</Card>
@@ -171,20 +145,21 @@ export async function ServerSideData() {
 			</div>
 		);
 	} catch (error) {
-		const status = typeof error === "object" && error && "status" in error
-			? Number((error as { status?: unknown }).status)
-			: undefined;
+		const status =
+			typeof error === "object" && error && "status" in error
+				? Number((error as { status?: unknown }).status)
+				: undefined;
 
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle>Dashboard unavailable</CardTitle>
+					<CardTitle className="font-display">Dashboard indisponível</CardTitle>
 					<CardDescription>
-						The backend rejected the request. Check auth and backend deployment status.
+						O backend rejeitou a requisição. Verifique autenticação e deploy.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					{status ? `Backend status: ${status}` : "Unknown backend error"}
+					{status ? `Status retornado pelo backend: ${status}` : "Erro desconhecido no backend"}
 				</CardContent>
 			</Card>
 		);

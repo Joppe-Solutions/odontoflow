@@ -8,53 +8,112 @@ import {
 	NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
-import { ArrowRight, Rat } from "lucide-react";
+import {
+	ArrowRight,
+	Brain,
+	ClipboardList,
+	FileSearch,
+	Heart,
+	Pill,
+	Users,
+} from "lucide-react";
 import Link from "next/link";
 
 export function Header() {
 	return (
-		<header className="border-b">
-			<div className="container flex items-center justify-between py-2">
-				<Link href="/" className="text-xl font-bold flex items-center">
-					<Rat className="size-5 mr-1" /> Acme
+		<header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+			<div className="container flex h-16 items-center justify-between">
+				<Link href="/" className="flex items-center gap-2">
+					<div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+						<Heart className="h-4 w-4 text-primary-foreground" />
+					</div>
+					<span className="text-xl font-display font-bold">OdontoFlow</span>
 				</Link>
 
-				<NavigationMenu>
+				<NavigationMenu className="hidden md:flex">
 					<NavigationMenuList>
 						<NavigationMenuItem>
-							<NavigationMenuTrigger>Features</NavigationMenuTrigger>
+							<NavigationMenuTrigger>Funcionalidades</NavigationMenuTrigger>
 							<NavigationMenuContent>
-								<ul className="w-80">
+								<ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2">
 									<li>
 										<NavigationMenuLink asChild>
-											<a href="https://stripe.com">
-												<p className="font-medium leading-none">Stripe</p>
-												<p className="text-sm text-muted-foreground leading-snug">
-													Get paid easily
+											<Link
+												href="/#features"
+												className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+											>
+												<div className="flex items-center gap-2">
+													<Users className="h-4 w-4 text-primary" />
+													<span className="text-sm font-medium leading-none">Pacientes</span>
+												</div>
+												<p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+													Gestão completa de prontuários e histórico clínico.
 												</p>
-											</a>
+											</Link>
 										</NavigationMenuLink>
 									</li>
-
 									<li>
 										<NavigationMenuLink asChild>
-											<a href="https://clerk.com">
-												<p className="font-medium leading-none">Clerk</p>
-												<p className="text-sm text-muted-foreground leading-snug">
-													Auth is already setup
+											<Link
+												href="/#features"
+												className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+											>
+												<div className="flex items-center gap-2">
+													<ClipboardList className="h-4 w-4 text-primary" />
+													<span className="text-sm font-medium leading-none">Anamnese</span>
+												</div>
+												<p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+													Formulários digitais preenchidos pelo paciente.
 												</p>
-											</a>
+											</Link>
 										</NavigationMenuLink>
 									</li>
-
 									<li>
 										<NavigationMenuLink asChild>
-											<a href="https://ui.shadcn.com">
-												<p className="font-medium leading-none">shadcn</p>
-												<p className="text-sm text-muted-foreground leading-snug">
-													Uses shadcn/ui for components
+											<Link
+												href="/#features"
+												className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+											>
+												<div className="flex items-center gap-2">
+													<FileSearch className="h-4 w-4 text-primary" />
+													<span className="text-sm font-medium leading-none">Exames</span>
+												</div>
+												<p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+													Upload e análise de exames com IA.
 												</p>
-											</a>
+											</Link>
+										</NavigationMenuLink>
+									</li>
+									<li>
+										<NavigationMenuLink asChild>
+											<Link
+												href="/#features"
+												className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+											>
+												<div className="flex items-center gap-2">
+													<Brain className="h-4 w-4 text-primary" />
+													<span className="text-sm font-medium leading-none">Diagnóstico</span>
+												</div>
+												<p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+													Sugestões inteligentes baseadas em dados clínicos.
+												</p>
+											</Link>
+										</NavigationMenuLink>
+									</li>
+									<li>
+										<NavigationMenuLink asChild>
+											<Link
+												href="/#features"
+												className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+											>
+												<div className="flex items-center gap-2">
+													<Pill className="h-4 w-4 text-primary" />
+													<span className="text-sm font-medium leading-none">Prescrições</span>
+												</div>
+												<p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+													Receitas digitais com assinatura eletrônica.
+												</p>
+											</Link>
 										</NavigationMenuLink>
 									</li>
 								</ul>
@@ -62,36 +121,42 @@ export function Header() {
 						</NavigationMenuItem>
 
 						<NavigationMenuItem>
-							<Link href="/company" legacyBehavior passHref>
-								<NavigationMenuLink>Company</NavigationMenuLink>
+							<Link href="/pricing" legacyBehavior passHref>
+								<NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50">
+									Planos
+								</NavigationMenuLink>
 							</Link>
 						</NavigationMenuItem>
 
 						<NavigationMenuItem>
-							<Link href="/pricing" legacyBehavior passHref>
-								<NavigationMenuLink>Pricing</NavigationMenuLink>
+							<Link href="/company" legacyBehavior passHref>
+								<NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50">
+									Sobre
+								</NavigationMenuLink>
 							</Link>
 						</NavigationMenuItem>
 					</NavigationMenuList>
 				</NavigationMenu>
 
-				<SignedOut>
-					<SignInButton forceRedirectUrl="/dashboard">
-						<Button>
-							Sign in <ArrowRight />
-						</Button>
-					</SignInButton>
-				</SignedOut>
-				<SignedIn>
-					<div className="flex items-center gap-4">
+				<div className="flex items-center gap-4">
+					<SignedOut>
+						<SignInButton forceRedirectUrl="/dashboard">
+							<Button>
+								Entrar
+								<ArrowRight className="ml-2 h-4 w-4" />
+							</Button>
+						</SignInButton>
+					</SignedOut>
+					<SignedIn>
 						<Button asChild variant="outline">
 							<Link href="/dashboard">
-								Dashboard <ArrowRight />
+								Dashboard
+								<ArrowRight className="ml-2 h-4 w-4" />
 							</Link>
 						</Button>
 						<UserButton />
-					</div>
-				</SignedIn>
+					</SignedIn>
+				</div>
 			</div>
 		</header>
 	);

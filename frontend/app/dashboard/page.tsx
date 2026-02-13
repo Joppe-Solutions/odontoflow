@@ -2,12 +2,10 @@ import { ServerSideData } from "./server-side-data";
 
 export default function DashboardPage() {
 	return (
-		<div className="container mx-auto max-w-6xl space-y-6">
+		<div className="space-y-6 animate-fade-in">
 			<div>
-				<h1 className="text-3xl font-semibold">Dashboard</h1>
-				<p className="text-muted-foreground mt-1 text-sm">
-					Operational overview of patients, exams, anamnesis, and subscription.
-				</p>
+				<h1 className="text-2xl font-display font-bold">Visão geral da clínica</h1>
+				<p className="text-muted-foreground mt-1">Indicadores operacionais em tempo real.</p>
 			</div>
 
 			<ServerSideData />
