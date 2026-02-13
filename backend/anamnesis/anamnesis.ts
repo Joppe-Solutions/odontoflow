@@ -1,6 +1,7 @@
 import { APIError, api } from "encore.dev/api";
 import log from "encore.dev/log";
 import { randomUUID } from "node:crypto";
+import { recordSystemTimelineEvent } from "../patients/patients";
 import { getAuthData } from "~encore/auth";
 import { db } from "./db";
 
@@ -212,6 +213,23 @@ function generateToken(): string {
 	return `anm_${randomUUID().replace(/-/g, "")}`;
 }
 
+async function safeRecordTimelineEvent(params: {
+	patientId: string;
+	organizationId: string;
+	eventType: "anamnesis_submitted";
+	title: string;
+	description?: string;
+	metadata?: Record<string, unknown>;
+	actorId?: string;
+}): Promise<void> {
+	try {
+		await recordSystemTimelineEvent(params);
+	} catch (error) {
+		// Timeline failures should not block anamnesis flow.
+		log.warn("failed to record timeline event from anamnesis service", { error, params });
+	}
+}
+
 // ============ TEMPLATE ENDPOINTS ============
 
 // Create a new anamnesis template
@@ -305,13 +323,13 @@ export const updateTemplate = api(
 		const authData = requireAuthContext();
 
 		const row = await db.queryRow<TemplateRow>`
-			UPDATE anamnesis_templates
-			SET
-				name = COALESCE(${params.name?.trim() || null}, name),
-				description = COALESCE(${params.description?.trim()}, description),
-				sections = COALESCE(${params.sections ? JSON.stringify(params.sections) : null}::JSONB, sections),
-				is_active = COALESCE(${params.isActive ?? null}, is_active),
-				updated_at = NOW()
+				UPDATE anamnesis_templates
+				SET
+					name = COALESCE(${params.name?.trim() || null}, name),
+					description = COALESCE(${params.description?.trim() || null}, description),
+					sections = COALESCE(${params.sections ? JSON.stringify(params.sections) : null}::JSONB, sections),
+					is_active = COALESCE(${params.isActive ?? null}, is_active),
+					updated_at = NOW()
 			WHERE id = ${params.id} AND organization_id = ${authData.orgID}
 			RETURNING *
 		`;
@@ -532,6 +550,18 @@ export const submitForm = api(
 			submissionID: submission.id,
 			patientID: submission.patient_id,
 			orgID: submission.organization_id,
+		});
+
+		await safeRecordTimelineEvent({
+			patientId: submission.patient_id,
+			organizationId: submission.organization_id,
+			eventType: "anamnesis_submitted",
+			title: "Anamnesis submitted",
+			description: "Patient submitted the anamnesis form.",
+			metadata: {
+				submissionId: submission.id,
+				templateId: submission.template_id,
+			},
 		});
 
 		return { success: true };

@@ -4,15 +4,19 @@ import { useOrganization } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-export function OrganizationRedirect() {
+interface OrganizationRedirectProps {
+	afterSelectUrl: string;
+}
+
+export function OrganizationRedirect({ afterSelectUrl }: OrganizationRedirectProps) {
 	const { isLoaded, organization } = useOrganization();
 	const router = useRouter();
 
 	useEffect(() => {
 		if (isLoaded && organization?.id) {
-			router.replace("/dashboard");
+			router.replace(afterSelectUrl);
 		}
-	}, [isLoaded, organization?.id, router]);
+	}, [afterSelectUrl, isLoaded, organization?.id, router]);
 
 	return null;
 }

@@ -24,6 +24,13 @@ const clerk = createClerkClient({
   secretKey: clerkSecretKey(),
 });
 
+function getAllowedPriceIDs(): string[] {
+  return (process.env.STRIPE_ALLOWED_PRICE_IDS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+}
+
 // Helper function to extract the body from an incoming request.
 function getBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve) => {
@@ -81,6 +88,17 @@ export const stripeWebhookHandler = api.raw(
         `;
           break;
         }
+        case "customer.subscription.deleted": {
+          const subscription = event.data.object;
+          await db.exec`
+        UPDATE subscription
+        SET
+          status = ${subscription.status as string},
+          updated_at = ${new Date()}
+        WHERE stripe_id = ${subscription.id as string}
+        `;
+          break;
+        }
       }
 
       res.write(JSON.stringify({ received: true }));
@@ -119,6 +137,14 @@ export const createCheckoutSession = api(
     const authData = getAuthData();
     if (!authData) {
       throw APIError.unauthenticated("user not authenticated");
+    }
+
+    const allowedPriceIDs = getAllowedPriceIDs();
+    if (
+      allowedPriceIDs.length > 0 &&
+      !allowedPriceIDs.includes(params.priceId)
+    ) {
+      throw APIError.failedPrecondition("invalid price id");
     }
 
     // Try to get the organization's stripe customer ID

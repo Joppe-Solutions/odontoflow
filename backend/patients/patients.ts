@@ -131,6 +131,16 @@ interface AddTimelineEventParams {
 	metadata?: Record<string, unknown>;
 }
 
+interface RecordSystemTimelineEventParams {
+	patientId: string;
+	organizationId: string;
+	eventType: TimelineEventType;
+	title: string;
+	description?: string;
+	metadata?: Record<string, unknown>;
+	actorId?: string;
+}
+
 function toTimelineEvent(row: TimelineEventRow): TimelineEvent {
 	return {
 		id: row.id,
@@ -183,6 +193,78 @@ function normalizeOffset(offset?: number): number {
 	return offset;
 }
 
+async function ensurePatientBelongsToOrganization(
+	patientId: string,
+	orgID: string,
+): Promise<void> {
+	const patient = await db.queryRow<PatientRow>`
+		SELECT * FROM patients
+		WHERE id = ${patientId}
+		  AND organization_id = ${orgID}
+	`;
+
+	if (!patient) {
+		throw APIError.notFound("patient not found");
+	}
+}
+
+async function insertTimelineEvent(params: {
+	patientId: string;
+	orgID: string;
+	eventType: TimelineEventType;
+	title: string;
+	description?: string;
+	metadata?: Record<string, unknown>;
+	actorId?: string;
+}): Promise<TimelineEventRow> {
+	const id = randomUUID();
+	const row = await db.queryRow<TimelineEventRow>`
+		INSERT INTO patient_timeline (
+			id,
+			patient_id,
+			organization_id,
+			event_type,
+			title,
+			description,
+			metadata,
+			actor_id
+		) VALUES (
+			${id},
+			${params.patientId},
+			${params.orgID},
+			${params.eventType},
+			${params.title},
+			${params.description || null},
+			${params.metadata ? JSON.stringify(params.metadata) : null}::JSONB,
+			${params.actorId || null}
+		)
+		RETURNING *
+	`;
+
+	if (!row) {
+		throw APIError.internal("failed to create timeline event");
+	}
+
+	return row;
+}
+
+async function safeInsertTimelineEvent(params: {
+	patientId: string;
+	orgID: string;
+	eventType: TimelineEventType;
+	title: string;
+	description?: string;
+	metadata?: Record<string, unknown>;
+	actorId?: string;
+}): Promise<void> {
+	try {
+		await insertTimelineEvent(params);
+	} catch (error) {
+		// Timeline writes should not block core patient CRUD.
+		log.warn("failed to insert patient timeline event", { error, params });
+	}
+}
+
 // Creates a patient for the authenticated organization.
 export const createPatient = api(
 	{ method: "POST", path: "/patients", expose: true, auth: true },
@@ -224,6 +306,17 @@ export const createPatient = api(
 				patientID: row.id,
 				orgID: authData.orgID,
 				userID: authData.userID,
+			});
+
+			await safeInsertTimelineEvent({
+				patientId: row.id,
+				orgID: authData.orgID,
+				eventType: "created",
+				title: "Patient record created",
+				metadata: {
+					patientName: row.name,
+				},
+				actorId: authData.userID,
 			});
 
 			return toPatient(row);
@@ -340,6 +433,17 @@ export const updatePatient = api(
 			userID: authData.userID,
 		});
 
+		await safeInsertTimelineEvent({
+			patientId: row.id,
+			orgID: authData.orgID,
+			eventType: "updated",
+			title: "Patient record updated",
+			metadata: {
+				status: row.status,
+			},
+			actorId: authData.userID,
+		});
+
 		return toPatient(row);
 	},
 );
@@ -369,6 +473,14 @@ export const archivePatient = api(
 			patientID: row.id,
 			orgID: authData.orgID,
 			userID: authData.userID,
+		});
+
+		await safeInsertTimelineEvent({
+			patientId: row.id,
+			orgID: authData.orgID,
+			eventType: "archived",
+			title: "Patient record archived",
+			actorId: authData.userID,
 		});
 
 		return toPatient(row);
@@ -426,45 +538,16 @@ export const addTimelineEvent = api(
 	{ method: "POST", path: "/patients/:patientId/timeline", expose: true, auth: true },
 	async (params: AddTimelineEventParams): Promise<TimelineEvent> => {
 		const authData = requireAuthContext();
-		const id = randomUUID();
-
-		// First verify patient belongs to organization
-		const patient = await db.queryRow<PatientRow>`
-			SELECT * FROM patients
-			WHERE id = ${params.patientId}
-			  AND organization_id = ${authData.orgID}
-		`;
-
-		if (!patient) {
-			throw APIError.notFound("patient not found");
-		}
-
-		const row = await db.queryRow<TimelineEventRow>`
-			INSERT INTO patient_timeline (
-				id,
-				patient_id,
-				organization_id,
-				event_type,
-				title,
-				description,
-				metadata,
-				actor_id
-			) VALUES (
-				${id},
-				${params.patientId},
-				${authData.orgID},
-				${params.eventType},
-				${params.title},
-				${params.description || null},
-				${params.metadata ? JSON.stringify(params.metadata) : null}::JSONB,
-				${authData.userID}
-			)
-			RETURNING *
-		`;
-
-		if (!row) {
-			throw APIError.internal("failed to create timeline event");
-		}
+		await ensurePatientBelongsToOrganization(params.patientId, authData.orgID);
+		const row = await insertTimelineEvent({
+			patientId: params.patientId,
+			orgID: authData.orgID,
+			eventType: params.eventType,
+			title: params.title,
+			description: params.description,
+			metadata: params.metadata,
+			actorId: authData.userID,
+		});
 
 		log.info("timeline event created", {
 			eventID: row.id,
@@ -472,6 +555,36 @@ export const addTimelineEvent = api(
 			eventType: params.eventType,
 			orgID: authData.orgID,
 			userID: authData.userID,
+		});
+
+		return toTimelineEvent(row);
+	},
+);
+
+// Internal endpoint for service-to-service timeline automation.
+export const recordSystemTimelineEvent = api(
+	{ method: "POST", path: "/internal/patients/timeline", expose: false, auth: false },
+	async (params: RecordSystemTimelineEventParams): Promise<TimelineEvent> => {
+		await ensurePatientBelongsToOrganization(
+			params.patientId,
+			params.organizationId,
+		);
+		const row = await insertTimelineEvent({
+			patientId: params.patientId,
+			orgID: params.organizationId,
+			eventType: params.eventType,
+			title: params.title,
+			description: params.description,
+			metadata: params.metadata,
+			actorId: params.actorId,
+		});
+
+		log.info("system timeline event created", {
+			eventID: row.id,
+			patientID: params.patientId,
+			eventType: params.eventType,
+			orgID: params.organizationId,
+			actorID: params.actorId,
 		});
 
 		return toTimelineEvent(row);

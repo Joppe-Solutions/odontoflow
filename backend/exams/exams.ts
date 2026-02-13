@@ -1,6 +1,7 @@
 import { APIError, api } from "encore.dev/api";
 import log from "encore.dev/log";
 import { randomUUID } from "node:crypto";
+import { recordSystemTimelineEvent } from "../patients/patients";
 import { getAuthData } from "~encore/auth";
 import { db } from "./db";
 
@@ -216,6 +217,23 @@ function calculateMarkerStatus(
 	return "normal";
 }
 
+async function safeRecordTimelineEvent(params: {
+	patientId: string;
+	organizationId: string;
+	eventType: "exam_uploaded" | "exam_reviewed";
+	title: string;
+	description?: string;
+	metadata?: Record<string, unknown>;
+	actorId?: string;
+}): Promise<void> {
+	try {
+		await recordSystemTimelineEvent(params);
+	} catch (error) {
+		// Timeline failures should not block clinical workflows.
+		log.warn("failed to record timeline event from exams service", { error, params });
+	}
+}
+
 // ============ EXAM ENDPOINTS ============
 
 // Create a new exam
@@ -250,6 +268,21 @@ export const createExam = api(
 			examID: row.id,
 			patientID: params.patientId,
 			orgID: authData.orgID,
+		});
+
+		await safeRecordTimelineEvent({
+			patientId: row.patient_id,
+			organizationId: authData.orgID,
+			eventType: "exam_uploaded",
+			title: `Exam uploaded: ${row.name}`,
+			description: `Type: ${row.type}`,
+			metadata: {
+				examId: row.id,
+				examName: row.name,
+				examType: row.type,
+				status: row.status,
+			},
+			actorId: authData.userID,
 		});
 
 		return toExam(row);
@@ -349,6 +382,25 @@ export const updateExamStatus = api(
 			throw APIError.notFound("exam not found");
 		}
 
+		if (row.status === "ready" || row.status === "error") {
+			await safeRecordTimelineEvent({
+				patientId: row.patient_id,
+				organizationId: authData.orgID,
+				eventType: "exam_reviewed",
+				title:
+					row.status === "ready"
+						? `Exam reviewed: ${row.name}`
+						: `Exam processing error: ${row.name}`,
+				description: errorMessage || undefined,
+				metadata: {
+					examId: row.id,
+					examName: row.name,
+					status: row.status,
+				},
+				actorId: authData.userID,
+			});
+		}
+
 		return toExam(row);
 	},
 );
@@ -371,6 +423,20 @@ export const storeOcrResult = api(
 		}
 
 		log.info("OCR result stored", { examID: params.examId, orgID: authData.orgID });
+
+		await safeRecordTimelineEvent({
+			patientId: row.patient_id,
+			organizationId: authData.orgID,
+			eventType: "exam_reviewed",
+			title: `OCR completed: ${row.name}`,
+			description: "Exam is ready for marker review.",
+			metadata: {
+				examId: row.id,
+				examName: row.name,
+				status: row.status,
+			},
+			actorId: authData.userID,
+		});
 
 		return toExam(row);
 	},
