@@ -3,6 +3,7 @@ import log from "encore.dev/log";
 import { listSubmissions } from "../anamnesis/anamnesis";
 import { listExams } from "../exams/exams";
 import { listPatients } from "../patients/patients";
+import { listPrescriptions } from "../prescription/prescription";
 import { getSubscription } from "../subscription/stripe";
 
 interface DashboardData {
@@ -24,6 +25,10 @@ interface DashboardData {
 	inProgressSubmissions: number;
 	pendingSubmissions: number;
 	expiredSubmissions: number;
+	totalPrescriptions: number;
+	draftPrescriptions: number;
+	signedPrescriptions: number;
+	cancelledPrescriptions: number;
 	hasActiveSubscription: boolean;
 	activeSubscriptionPriceId?: string;
 }
@@ -48,6 +53,10 @@ export const getDashboardData = api(
 			submissionsInProgress,
 			submissionsPending,
 			submissionsExpired,
+			prescriptionsAll,
+			prescriptionsDraft,
+			prescriptionsSigned,
+			prescriptionsCancelled,
 		] = await Promise.all([
 			listPatients({ limit: 1, offset: 0 }),
 			listPatients({ status: "active", limit: 1, offset: 0 }),
@@ -62,6 +71,10 @@ export const getDashboardData = api(
 			listSubmissions({ status: "in_progress", limit: 1, offset: 0 }),
 			listSubmissions({ status: "pending", limit: 1, offset: 0 }),
 			listSubmissions({ status: "expired", limit: 1, offset: 0 }),
+			listPrescriptions({ limit: 1, offset: 0 }),
+			listPrescriptions({ status: "draft", limit: 1, offset: 0 }),
+			listPrescriptions({ status: "signed", limit: 1, offset: 0 }),
+			listPrescriptions({ status: "cancelled", limit: 1, offset: 0 }),
 		]);
 
 		let hasActiveSubscription = false;
@@ -93,6 +106,10 @@ export const getDashboardData = api(
 			inProgressSubmissions: submissionsInProgress.total,
 			pendingSubmissions: submissionsPending.total,
 			expiredSubmissions: submissionsExpired.total,
+			totalPrescriptions: prescriptionsAll.total,
+			draftPrescriptions: prescriptionsDraft.total,
+			signedPrescriptions: prescriptionsSigned.total,
+			cancelledPrescriptions: prescriptionsCancelled.total,
 			hasActiveSubscription,
 			activeSubscriptionPriceId,
 		};

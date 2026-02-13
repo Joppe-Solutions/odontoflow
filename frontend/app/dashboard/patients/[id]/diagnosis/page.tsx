@@ -84,6 +84,11 @@ export default async function PatientDiagnosisPage({ params }: PageProps) {
 							Back to Patient
 						</Link>
 					</Button>
+					<Button asChild variant="outline">
+						<Link href={`/dashboard/patients/${patientId}/prescriptions`}>
+							Prescriptions
+						</Link>
+					</Button>
 					<form action={analyzeAction}>
 						<input type="hidden" name="patientId" value={patientId} />
 						<Button type="submit">
@@ -238,4 +243,3 @@ export default async function PatientDiagnosisPage({ params }: PageProps) {
 		</div>
 	);
 }
-

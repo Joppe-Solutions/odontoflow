@@ -25,6 +25,10 @@ interface DashboardStats {
 	inProgressSubmissions: number;
 	pendingSubmissions: number;
 	expiredSubmissions: number;
+	totalPrescriptions: number;
+	draftPrescriptions: number;
+	signedPrescriptions: number;
+	cancelledPrescriptions: number;
 	hasActiveSubscription: boolean;
 	activeSubscriptionPriceId?: string;
 }
@@ -69,6 +73,16 @@ export async function ServerSideData() {
 
 					<Card>
 						<CardHeader className="pb-2">
+							<CardDescription>Total Prescriptions</CardDescription>
+							<CardTitle className="text-3xl">{data.totalPrescriptions}</CardTitle>
+						</CardHeader>
+						<CardContent className="text-xs text-muted-foreground">
+							Draft: {data.draftPrescriptions} | Signed: {data.signedPrescriptions}
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader className="pb-2">
 							<CardDescription>Subscription</CardDescription>
 							<CardTitle className="text-base font-semibold">
 								{data.hasActiveSubscription ? "Active" : "Not Active"}
@@ -82,7 +96,7 @@ export async function ServerSideData() {
 					</Card>
 				</div>
 
-				<div className="grid gap-4 lg:grid-cols-2">
+				<div className="grid gap-4 lg:grid-cols-3">
 					<Card>
 						<CardHeader>
 							<CardTitle>Exams Pipeline</CardTitle>
@@ -129,6 +143,27 @@ export async function ServerSideData() {
 							<div className="flex justify-between">
 								<span>Expired</span>
 								<span className="font-medium">{data.expiredSubmissions}</span>
+							</div>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle>Prescription Pipeline</CardTitle>
+							<CardDescription>Current prescription lifecycle status.</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-2 text-sm">
+							<div className="flex justify-between">
+								<span>Draft</span>
+								<span className="font-medium">{data.draftPrescriptions}</span>
+							</div>
+							<div className="flex justify-between">
+								<span>Signed</span>
+								<span className="font-medium">{data.signedPrescriptions}</span>
+							</div>
+							<div className="flex justify-between">
+								<span>Cancelled</span>
+								<span className="font-medium">{data.cancelledPrescriptions}</span>
 							</div>
 						</CardContent>
 					</Card>
