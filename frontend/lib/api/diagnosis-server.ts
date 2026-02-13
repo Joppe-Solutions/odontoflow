@@ -45,6 +45,9 @@ export interface ListDiagnosesResponse {
 }
 
 function getEncoreBaseUrl(): string {
+	if (serverSideEnv.ENCORE_ENV_NAME) {
+		return Environment(serverSideEnv.ENCORE_ENV_NAME);
+	}
 	if (serverSideEnv.VERCEL_ENV === "production") {
 		return Environment("staging");
 	}
@@ -119,4 +122,3 @@ export async function reviewDiagnosis(
 		body: JSON.stringify({ id, clinicalNotes }),
 	});
 }
-

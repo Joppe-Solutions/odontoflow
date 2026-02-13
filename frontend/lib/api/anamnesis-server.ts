@@ -121,6 +121,9 @@ export interface PublicFormData {
 }
 
 function getEncoreBaseUrl(): string {
+	if (serverSideEnv.ENCORE_ENV_NAME) {
+		return Environment(serverSideEnv.ENCORE_ENV_NAME);
+	}
 	if (serverSideEnv.VERCEL_ENV === "production") {
 		return Environment("staging");
 	}

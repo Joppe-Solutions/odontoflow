@@ -9,9 +9,10 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { listPatients } from "@/lib/api/patients-server";
+import { listPatients, type ListPatientsResponse } from "@/lib/api/patients-server";
 import {
 	listPrescriptions,
+	type ListPrescriptionsResponse,
 	type PrescriptionStatus,
 } from "@/lib/api/prescription-server";
 import Link from "next/link";
@@ -29,11 +30,26 @@ function compactPatientId(patientId: string): string {
 	return patientId.length > 12 ? `${patientId.slice(0, 12)}...` : patientId;
 }
 
+function extractErrorMessage(error: unknown): string {
+	if (error instanceof Error) {
+		return error.message;
+	}
+	return "Unknown error";
+}
+
 export default async function PrescriptionsPage() {
-	const [prescriptions, patients] = await Promise.all([
-		listPrescriptions({ limit: 100, offset: 0 }),
-		listPatients({ limit: 300, offset: 0 }),
-	]);
+	let prescriptionError: string | undefined;
+	let prescriptions: ListPrescriptionsResponse = { items: [], total: 0 };
+	let patients: ListPatientsResponse = { items: [], total: 0 };
+
+	try {
+		[prescriptions, patients] = await Promise.all([
+			listPrescriptions({ limit: 100, offset: 0 }),
+			listPatients({ limit: 300, offset: 0 }),
+		]);
+	} catch (error) {
+		prescriptionError = extractErrorMessage(error);
+	}
 
 	const patientNameById = new Map(
 		patients.items.map((patient) => [patient.id, patient.name]),
@@ -51,10 +67,18 @@ export default async function PrescriptionsPage() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Prescription Registry</CardTitle>
-					<CardDescription>Total prescriptions: {prescriptions.total}</CardDescription>
+					<CardDescription>
+						{prescriptionError
+							? "Prescription service unavailable in current backend environment."
+							: `Total prescriptions: ${prescriptions.total}`}
+					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					{prescriptions.items.length === 0 ? (
+					{prescriptionError ? (
+						<p className="text-sm text-muted-foreground">
+							{prescriptionError}
+						</p>
+					) : prescriptions.items.length === 0 ? (
 						<p className="text-sm text-muted-foreground">No prescriptions found.</p>
 					) : (
 						<Table>
@@ -100,4 +124,3 @@ export default async function PrescriptionsPage() {
 		</div>
 	);
 }
-

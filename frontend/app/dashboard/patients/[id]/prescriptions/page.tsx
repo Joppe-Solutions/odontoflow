@@ -3,13 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { listDiagnoses } from "@/lib/api/diagnosis-server";
+import {
+	listDiagnoses,
+	type ListDiagnosesResponse,
+} from "@/lib/api/diagnosis-server";
 import { getPatient } from "@/lib/api/patients-server";
 import {
 	cancelPrescription,
 	createPrescription,
 	listPrescriptions,
 	signPrescription,
+	type ListPrescriptionsResponse,
 	type PrescriptionItemType,
 	type PrescriptionStatus,
 } from "@/lib/api/prescription-server";
@@ -30,6 +34,13 @@ const STATUS_VARIANT: Record<
 	signed: "default",
 	cancelled: "destructive",
 };
+
+function extractErrorMessage(error: unknown): string {
+	if (error instanceof Error) {
+		return error.message;
+	}
+	return "Unknown error";
+}
 
 async function createPrescriptionAction(formData: FormData) {
 	"use server";
@@ -112,16 +123,22 @@ export default async function PatientPrescriptionsPage({ params }: PageProps) {
 	const { id: patientId } = await params;
 
 	let patient;
-	let prescriptions;
-	let diagnoses;
 	try {
-		[patient, prescriptions, diagnoses] = await Promise.all([
-			getPatient(patientId),
+		patient = await getPatient(patientId);
+	} catch {
+		notFound();
+	}
+
+	let prescriptionError: string | undefined;
+	let prescriptions: ListPrescriptionsResponse = { items: [], total: 0 };
+	let diagnoses: ListDiagnosesResponse = { items: [], total: 0 };
+	try {
+		[prescriptions, diagnoses] = await Promise.all([
 			listPrescriptions({ patientId, limit: 50, offset: 0 }),
 			listDiagnoses({ patientId, limit: 30, offset: 0 }),
 		]);
-	} catch {
-		notFound();
+	} catch (error) {
+		prescriptionError = extractErrorMessage(error);
 	}
 
 	return (
@@ -145,11 +162,16 @@ export default async function PatientPrescriptionsPage({ params }: PageProps) {
 				<CardHeader>
 					<CardTitle>Create Prescription Draft</CardTitle>
 					<CardDescription>
-						Generate a new prescription item and link it to a diagnosis if desired.
+						{prescriptionError
+							? "Prescription service unavailable in current backend environment."
+							: "Generate a new prescription item and link it to a diagnosis if desired."}
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<form action={createPrescriptionAction} className="grid grid-cols-1 gap-3 md:grid-cols-2">
+					{prescriptionError ? (
+						<p className="text-sm text-muted-foreground">{prescriptionError}</p>
+					) : (
+						<form action={createPrescriptionAction} className="grid grid-cols-1 gap-3 md:grid-cols-2">
 						<input type="hidden" name="patientId" value={patientId} />
 
 						<select
@@ -203,7 +225,8 @@ export default async function PatientPrescriptionsPage({ params }: PageProps) {
 								Create Draft
 							</Button>
 						</div>
-					</form>
+						</form>
+					)}
 				</CardContent>
 			</Card>
 
@@ -213,7 +236,9 @@ export default async function PatientPrescriptionsPage({ params }: PageProps) {
 					<CardDescription>Total prescriptions: {prescriptions.total}</CardDescription>
 				</CardHeader>
 				<CardContent>
-					{prescriptions.items.length === 0 ? (
+					{prescriptionError ? (
+						<p className="text-sm text-muted-foreground">{prescriptionError}</p>
+					) : prescriptions.items.length === 0 ? (
 						<p className="text-sm text-muted-foreground">No prescriptions created yet.</p>
 					) : (
 						<div className="space-y-3">
@@ -288,4 +313,3 @@ export default async function PatientPrescriptionsPage({ params }: PageProps) {
 		</div>
 	);
 }
-

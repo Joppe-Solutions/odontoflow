@@ -4,7 +4,9 @@ import Client, { Environment, Local, PreviewEnv } from "./encore-client";
 
 // Get the correct encore environment
 let environment = Local;
-if (clientSideEnv.NEXT_PUBLIC_VERCEL_ENV === "production") {
+if (clientSideEnv.NEXT_PUBLIC_ENCORE_ENV_NAME) {
+	environment = Environment(clientSideEnv.NEXT_PUBLIC_ENCORE_ENV_NAME);
+} else if (clientSideEnv.NEXT_PUBLIC_VERCEL_ENV === "production") {
 	environment = Environment("staging");
 } else if (clientSideEnv.NEXT_PUBLIC_VERCEL_ENV === "preview") {
 	if (!clientSideEnv.NEXT_PUBLIC_VERCEL_GIT_PULL_REQUEST_ID) {

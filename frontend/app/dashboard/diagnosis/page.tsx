@@ -9,8 +9,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { listDiagnoses, type DiagnosisStatus } from "@/lib/api/diagnosis-server";
-import { listPatients } from "@/lib/api/patients-server";
+import {
+	listDiagnoses,
+	type DiagnosisStatus,
+	type ListDiagnosesResponse,
+} from "@/lib/api/diagnosis-server";
+import { listPatients, type ListPatientsResponse } from "@/lib/api/patients-server";
 import Link from "next/link";
 
 const STATUS_VARIANT: Record<DiagnosisStatus, "default" | "secondary"> = {
@@ -22,11 +26,26 @@ function compactPatientId(patientId: string): string {
 	return patientId.length > 12 ? `${patientId.slice(0, 12)}...` : patientId;
 }
 
+function extractErrorMessage(error: unknown): string {
+	if (error instanceof Error) {
+		return error.message;
+	}
+	return "Unknown error";
+}
+
 export default async function DiagnosisPage() {
-	const [diagnoses, patients] = await Promise.all([
-		listDiagnoses({ limit: 100, offset: 0 }),
-		listPatients({ limit: 200, offset: 0 }),
-	]);
+	let diagnosisError: string | undefined;
+	let diagnoses: ListDiagnosesResponse = { items: [], total: 0 };
+	let patients: ListPatientsResponse = { items: [], total: 0 };
+
+	try {
+		[diagnoses, patients] = await Promise.all([
+			listDiagnoses({ limit: 100, offset: 0 }),
+			listPatients({ limit: 200, offset: 0 }),
+		]);
+	} catch (error) {
+		diagnosisError = extractErrorMessage(error);
+	}
 
 	const patientNameById = new Map(
 		patients.items.map((patient) => [patient.id, patient.name]),
@@ -44,10 +63,18 @@ export default async function DiagnosisPage() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Diagnosis Registry</CardTitle>
-					<CardDescription>Total analyses: {diagnoses.total}</CardDescription>
+					<CardDescription>
+						{diagnosisError
+							? "Diagnosis service unavailable in current backend environment."
+							: `Total analyses: ${diagnoses.total}`}
+					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					{diagnoses.items.length === 0 ? (
+					{diagnosisError ? (
+						<p className="text-sm text-muted-foreground">
+							{diagnosisError}
+						</p>
+					) : diagnoses.items.length === 0 ? (
 						<p className="text-sm text-muted-foreground">No diagnosis records found.</p>
 					) : (
 						<Table>
@@ -97,4 +124,3 @@ export default async function DiagnosisPage() {
 		</div>
 	);
 }
-

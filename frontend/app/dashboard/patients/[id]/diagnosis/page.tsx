@@ -6,6 +6,7 @@ import {
 	analyzePatientDiagnosis,
 	listDiagnoses,
 	reviewDiagnosis,
+	type ListDiagnosesResponse,
 	type DiagnosisStatus,
 } from "@/lib/api/diagnosis-server";
 import { getPatient } from "@/lib/api/patients-server";
@@ -20,6 +21,13 @@ interface PageProps {
 
 function statusBadgeVariant(status: DiagnosisStatus): "default" | "secondary" {
 	return status === "reviewed" ? "default" : "secondary";
+}
+
+function extractErrorMessage(error: unknown): string {
+	if (error instanceof Error) {
+		return error.message;
+	}
+	return "Unknown error";
 }
 
 async function analyzeAction(formData: FormData) {
@@ -56,14 +64,18 @@ export default async function PatientDiagnosisPage({ params }: PageProps) {
 	const { id: patientId } = await params;
 
 	let patient;
-	let diagnosisList;
 	try {
-		[patient, diagnosisList] = await Promise.all([
-			getPatient(patientId),
-			listDiagnoses({ patientId, limit: 10, offset: 0 }),
-		]);
+		patient = await getPatient(patientId);
 	} catch {
 		notFound();
+	}
+
+	let diagnosisError: string | undefined;
+	let diagnosisList: ListDiagnosesResponse = { items: [], total: 0 };
+	try {
+		diagnosisList = await listDiagnoses({ patientId, limit: 10, offset: 0 });
+	} catch (error) {
+		diagnosisError = extractErrorMessage(error);
 	}
 
 	const latest = diagnosisList.items[0];
@@ -99,7 +111,19 @@ export default async function PatientDiagnosisPage({ params }: PageProps) {
 				</div>
 			</div>
 
-			{!latest ? (
+			{diagnosisError ? (
+				<Card>
+					<CardHeader>
+						<CardTitle>Diagnosis service unavailable</CardTitle>
+						<CardDescription>
+							The backend for diagnosis has not been deployed in this environment yet.
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<p className="text-sm text-muted-foreground">{diagnosisError}</p>
+					</CardContent>
+				</Card>
+			) : !latest ? (
 				<Card>
 					<CardHeader>
 						<CardTitle>No diagnosis analysis yet</CardTitle>
@@ -213,7 +237,9 @@ export default async function PatientDiagnosisPage({ params }: PageProps) {
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					{diagnosisList.items.length === 0 ? (
+					{diagnosisError ? (
+						<p className="text-sm text-muted-foreground">{diagnosisError}</p>
+					) : diagnosisList.items.length === 0 ? (
 						<p className="text-sm text-muted-foreground">No analysis history.</p>
 					) : (
 						<div className="space-y-2">
